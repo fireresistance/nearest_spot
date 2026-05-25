@@ -2,7 +2,7 @@
 
 Мобильное приложение для поиска интересных мест рядом с текущей геолокацией. Tinder-подобный интерфейс: свайпай карточки, сохраняй понравившиеся, строй маршрут.
 
-**Версия:** 1.2.0  
+**Версия:** 1.3.0  
 **Стек:** Expo SDK 54 / React Native 0.81.5 / TypeScript / New Architecture (Fabric + Bridgeless)  
 **Платформы:** Android (iOS — не тестировалась)
 
@@ -13,18 +13,19 @@
 ### Работает
 - Геолокация с автообновлением (5 мин stale-таймаут)
 - Поиск мест через Wikipedia API (10 языков) и OpenStreetMap Overpass API (фолбэк)
+- **Мультизапросы для больших радиусов** — Wikipedia/OSM API с лимитом 10 км автоматически разбиваются на сетку подзапросов, покрывающих весь радиус до 500 км
 - Региональная специфика: Amap (高德地图) и Baidu Baike (百度百科) для Китая
 - Google Places API (если задан ключ) — приоритетный источник с фото
 - Автоопределение региона по координатам (Китай, Россия, Япония, Европа, Америка)
 - Фильтрация «скучных» объектов (остановки, метро, парковки, магазины и т.д.)
-- Фолбэк-поиск картинок: Wikimedia Commons → Openverse (без API ключа)
+- **Каскад поиска картинок:** Baidu Baike HTML-парсинг → Wikipedia Thumbnail → Wikimedia Commons → Openverse
+- **Выбор навигатора** при построении маршрута: Google Maps, Яндекс Карты, Amap, Baidu Maps (сортировка по региону)
 - Свайп-карточки (влево/вправо для «дальше»)
 - Индикатор загрузки фотографии в карточке места
 - Префетч: подгрузка следующих мест заранее (порог 15)
 - Сохранение мест в избранное
-- Построение маршрута через Google Maps
-- Настройки: радиус, режим (пешком/авто), язык Wikipedia, «только с фото», API ключи, регион
-- Мок-локации для тестирования без GPS (включая Шанхай и Пекин)
+- Радиус поиска до 500 км (Google/Amap — нативно, Wikipedia/OSM — через мультизапросы)
+- Настройки: радиус (км), режим (пешком/авто), язык Wikipedia, «только с фото», API ключи, регион
 
 ### Известные проблемы
 - **Google Maps может быть недоступен** в некоторых регионах
@@ -53,15 +54,18 @@ App.tsx
 ```
 src/
   services/              # API-клиенты
-    wikipedia.ts         # Wikipedia GeoSearch API (generator=geosearch, один запрос)
+    wikipedia.ts         # Wikipedia GeoSearch API (generator=geosearch, мультизапросы для radius>10km)
                          # Экспортирует BORING_PATTERNS и isBoring()
-    osm.ts               # OpenStreetMap Overpass API (фолбэк, 3 сервера)
-    amap.ts              # 高德地图 Amap POI Search API (для Китая, требует API ключ)
-    baidu.ts             # 百度百科 Baidu Baike API (обогащение описаний и фото в Китае)
-    google.ts            # Google Places API + Photo API (требует API ключ)
+    osm.ts               # OpenStreetMap Overpass API (фолбэк, 3 сервера, мультизапросы для radius>10km)
+    amap.ts              # 高德地图 Amap POI Search API (для Китая, требует API ключ, до 500км)
+    baiduImage.ts        # 百度百科 HTML-парсинг для картинок (bkimg.cdn.bcebos.com)
+    baidu.ts             # 百度百科 Baidu Baike API (обогащение описаний в Китае)
+    google.ts            # Google Places API + Photo API (требует API ключ, до 500км)
     region.ts            # Определение региона по координатам
-    imageSearch.ts       # Фолбэк-поиск картинок: Wikimedia Commons + Openverse (без API ключа)
+    imageSearch.ts       # Каскад поиска картинок: Baidu Baike → Wikipedia Thumbnail → WM Commons → Openverse
     imageProxy.ts        # Проксирование URL картинок для Китая (WMF → zh.wikipedia.org)
+    coverGrid.ts         # Генерация сетки точек покрытия для мультизапросов (Haversine)
+    navigation.ts        # Выбор навигатора: Google Maps, Yandex, Amap, Baidu Maps
   state/                 # Глобальный стейт
     AppProvider.tsx      # React Context: локация, настройки, сохранённые, просмотренные
     storage.ts           # AsyncStorage обёртка (readJson/writeJson)
@@ -110,27 +114,29 @@ src/
 Каскадная цепочка источников — следующий используется только если предыдущий вернул 0 результатов:
 
 ```
-Google Places API  (если задан googleKey)
+Google Places API  (если задан googleKey, до 500км)
        ↓ нет результатов
-Amap POI Search    (если регион=Китай и задан amapKey)
-  + Baidu Baike enrichment (описания и фото)
+Amap POI Search    (если регион=Китай и задан amapKey, до 500км)
+  + Baidu Baike enrichment (фото через HTML-парсинг)
        ↓ нет результатов
-Wikipedia GeoSearch  (до 3 языков × 2 хоста)
+Wikipedia GeoSearch  (до 3 языков × 2 хоста, мультизапросы для radius>10км)
        ↓ нет результатов
-OSM Overpass API   (3 сервера, 20 сек таймаут)
+OSM Overpass API   (3 сервера, 20 сек таймаут, мультизапросы для radius>10км)
 ```
 
 После загрузки из любого источника — **каскад обогащения картинками**:
 
 ```
-1. Baidu Baike               (только Китай, до 5 мест без картинки)
+1. Baidu Baike HTML-парсинг  (только Китай, до 5 мест без картинки)
        ↓
-2. Google Photo Search       (если есть googleKey, до 5 мест без картинки)
+2. Wikipedia Thumbnail       (из pageimages prop, все языки)
        ↓
 3. Wikimedia Commons Search  (без API ключа, до 8 мест без картинки)
        ↓
 4. Openverse API             (без API ключа, Creative Commons фото)
 ```
+
+Если включена опция «Только с фото» — после обогащения фильтруются места без `thumbnailUrl`.
 
 **Префетч:** когда в очереди < 15 мест, автоматически вызывается `loadMore`.
 
@@ -164,23 +170,52 @@ OSM Overpass API   (3 сервера, 20 сек таймаут)
 - Размер превью: **500px**
 - ID мест: `{lang}:{pageid}`
 
+**Мультизапросы для больших радиусов:**
+
+Wikipedia API ограничивает радиус геопоиска до 10 км. Для покрытия больших областей:
+
+1. `coverGrid.ts` генерирует сетку точек с шагом 15 км (1.5 × subRadius), покрывающую весь круг
+2. Точки за пределами запрошенного радиуса отсекаются (Haversine)
+3. Максимум 12 точек — если сетка больше, лишние точки выбираются случайно
+4. Запросы выполняются батчами по 3 параллельно (`Promise.allSettled`)
+5. Результаты дедуплицируются по ID места
+6. Ранняя остановка если набрано `limit × 2` мест
+
+Пример: радиус 100 км → ~7 подзапросов по 10 км, радиус 500 км → ~12 подзапросов.
+
 ---
 
-### 5. Фолбэк-поиск картинок
+### 5. Каскад поиска картинок
 
 **Файл:** `src/services/imageSearch.ts`
 
-Два источника, оба **без API ключа**:
+Четыре источника, все **без API ключа**:
 
-1. **Wikimedia Commons** — `commons.wikimedia.org/w/api.php`
+1. **Baidu Baike HTML-парсинг** (`src/services/baiduImage.ts`)
+   - Парсит HTML-страницу `baike.baidu.com/item/{title}` через XHR
+   - Извлекает изображения с `bkimg.cdn.bcebos.com` (CDN Baidu)
+   - Устанавливает `Referer: https://baike.baidu.com` для доступа к CDN
+   - Используется только для китайских названий
+
+2. **Wikipedia Thumbnail** — `xx.wikipedia.org/w/api.php`
+   - Получает thumbnail из `pageimages` prop при поиске мест
+   - Работает для ru/en и других языков
+
+3. **Wikimedia Commons** — `commons.wikimedia.org/w/api.php`
    - Ищет изображения по названию места
    - Возвращает `thumburl` (600px превью)
 
-2. **Openverse** — `api.openverse.org/v1/images/`
+4. **Openverse** — `api.openverse.org/v1/images/`
    - Поиск Creative Commons изображений
    - Бесплатный, без API ключа (rate-limited)
+   - Приоритет: прямые URL изображений вместо прокси (прокси возвращает 424)
 
-Функция `enrichPlacesWithFallbackImages()` параллельно обогащает до 8 мест без картинок.
+Функция `enrichPlacesWithImages()` параллельно обогащает места без картинок через каскад.
+
+**Проксирование для Китая** (`src/services/imageProxy.ts`):
+- Wikimedia Commons заблокирован в Китае
+- URL перенаправляются через `zh.wikipedia.org` (доступен)
+- Baidu Baike CDN требует правильный `Referer` заголовок
 
 ---
 
@@ -198,7 +233,27 @@ OSM Overpass API   (3 сервера, 20 сек таймаут)
 
 ---
 
-### 7. Хранение данных
+### 7. Навигация
+
+**Файл:** `src/services/navigation.ts`
+
+При нажатии «Построить маршрут» появляется Alert с выбором навигатора:
+
+| Навигатор | URL-шаблон | Примечание |
+|-----------|-----------|------------|
+| Google Maps | `google.navigation:q={lat},{lon}&mode={mode}` | По умолчанию для всех регионов |
+| Яндекс Карты | `yandexnavi://build_route_on_map?lat_to={lat}&lon_to={lon}` | Первый в России |
+| Amap (高德) | `androidamap://route?lat={lat}&lon={lon}&dev=0` | Первый в Китае |
+| Baidu Maps | `baidumap://map/direction?destination={lat},{lon}` | Второй в Китае |
+
+Порядок кнопок зависит от региона:
+- **Китай:** Amap → Baidu → Google → Yandex
+- **Россия:** Yandex → Google → Amap → Baidu
+- **Другие:** Google → Yandex → Amap → Baidu
+
+---
+
+### 8. Хранение данных
 
 **Файл:** `src/state/storage.ts` — `AsyncStorage` с версионированными ключами:
 
@@ -211,7 +266,7 @@ OSM Overpass API   (3 сервера, 20 сек таймаут)
 
 ---
 
-### 8. Управление состоянием загрузки в NearbyScreen
+### 9. Управление состоянием загрузки в NearbyScreen
 
 **Файл:** `src/screens/NearbyScreen.tsx`
 

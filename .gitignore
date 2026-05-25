@@ -45,4 +45,3 @@ logcat*.txt
 
 # AI config
 .claude/
-.trae/
