@@ -110,12 +110,13 @@ export async function searchImageFallback(title: string): Promise<string | undef
 
 export async function enrichPlacesWithFallbackImages(
   places: Array<{ id: string; title: string; thumbnailUrl?: string }>,
+  maxPlaces: number = 8,
 ): Promise<Map<string, string>> {
   const withoutImage = places.filter((p) => !p.thumbnailUrl);
   if (withoutImage.length === 0) return new Map();
 
   const results = await Promise.allSettled(
-    withoutImage.slice(0, 8).map(async (p) => {
+    withoutImage.slice(0, maxPlaces).map(async (p) => {
       const url = await searchImageFallback(p.title);
       return { id: p.id, url };
     }),

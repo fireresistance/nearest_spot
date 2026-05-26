@@ -145,27 +145,36 @@ export function NearbyScreen({ navigation }: Props) {
       }
 
       if (places.length === 0) {
-        try {
-          places = await fetchNearbyPlaces({
+        const [wikiPlaces, osmPlaces] = await Promise.allSettled([
+          fetchNearbyPlaces({
             lat: coords.lat,
             lon: coords.lon,
             radiusMeters: settings.radiusMeters,
             limit: 30,
-            requireImage: settings.requireImage,
+            requireImage: false,
             wikiLang: settings.wikiLang,
-          });
-        } catch {
-          // Wikipedia unavailable
-        }
-      }
+          }),
+          fetchNearbyPlacesOSM({
+            lat: coords.lat,
+            lon: coords.lon,
+            radiusMeters: settings.radiusMeters,
+            limit: 50,
+          }),
+        ]);
 
-      if (places.length === 0) {
-        places = await fetchNearbyPlacesOSM({
-          lat: coords.lat,
-          lon: coords.lon,
-          radiusMeters: settings.radiusMeters,
-          limit: 30,
-        });
+        const wiki = wikiPlaces.status === 'fulfilled' ? wikiPlaces.value : [];
+        const osm = osmPlaces.status === 'fulfilled' ? osmPlaces.value : [];
+        console.log(`[NEARBY] Combined: wiki=${wiki.length}, osm=${osm.length}`);
+
+        const seenCoords = new Set<string>();
+        const combined: Place[] = [];
+        for (const p of [...wiki, ...osm]) {
+          const key = `${p.lat.toFixed(3)},${p.lon.toFixed(3)}`;
+          if (seenCoords.has(key)) continue;
+          seenCoords.add(key);
+          combined.push(p);
+        }
+        places = combined;
       }
 
       if (places.length > 0) {
@@ -233,7 +242,7 @@ export function NearbyScreen({ navigation }: Props) {
         const stillWithoutImg = places.filter((p) => !p.thumbnailUrl);
         if (stillWithoutImg.length > 0) {
           try {
-            const fallbackMap = await enrichPlacesWithFallbackImages(stillWithoutImg);
+            const fallbackMap = await enrichPlacesWithFallbackImages(stillWithoutImg, settings.requireImage ? 15 : 8);
             if (fallbackMap.size > 0) {
               places = places.map((p) => {
                 const url = fallbackMap.get(p.id);
