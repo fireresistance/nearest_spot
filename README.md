@@ -376,7 +376,7 @@ Release APK содержит вшитый JS-бандл и не требует M
 
 ```powershell
 $env:ANDROID_HOME = "C:\Android\sdk"
-cd C:\sources\NearestSpot\android
+cd Z:\projects\NearestSpot\android
 .\gradlew.bat assembleRelease
 ```
 
@@ -390,7 +390,7 @@ android\app\build\outputs\apk\release\app-release.apk
 ### Установка APK на телефон
 
 ```powershell
-& "C:\Android\sdk\platform-tools\adb.exe" install -r "C:\sources\NearestSpot\android\app\build\outputs\apk\release\app-release.apk"
+& "C:\Android\sdk\platform-tools\adb.exe" install -r "Z:\projects\NearestSpot\android\app\build\outputs\apk\release\app-release.apk"
 ```
 
 Флаг `-r` — заменить существующую версию (обновление без удаления данных).
@@ -420,7 +420,7 @@ android\app\build\outputs\apk\release\app-release.apk
 
 # 2. Запустить Metro-бандлер
 $env:ANDROID_HOME = "C:\Android\sdk"
-cd C:\sources\NearestSpot
+cd Z:\projects\NearestSpot
 npx expo start --port 8081
 
 # 3. Собрать и установить debug-билд (только при первом запуске или изменении нативного кода)
