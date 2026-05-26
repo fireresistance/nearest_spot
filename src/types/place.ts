@@ -8,5 +8,6 @@ export type Place = {
   sourceUrl?: string;
   description?: string;
   source: 'wikipedia' | 'osm' | 'amap' | 'baidu';
+  score?: number;
 };
 

@@ -6,7 +6,7 @@ const OVERPASS_URLS = [
   'https://overpass.openstreetmap.ru/cgi/interpreter',
   'https://lz4.overpass-api.de/api/interpreter',
 ];
-const OVERPASS_TIMEOUT_S = 20;
+const OVERPASS_TIMEOUT_S = 25;
 
 type OverpassElement = {
   type: 'node' | 'way' | 'relation';
@@ -47,6 +47,41 @@ function getThumbnailUrl(tags: Record<string, string>): string | undefined {
     return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=600`;
   }
   return undefined;
+}
+
+function scoreOSMElement(tags: Record<string, string>): number {
+  let score = 0;
+
+  if (tags.tourism === 'attraction') score += 30;
+  else if (tags.tourism === 'museum') score += 28;
+  else if (tags.tourism === 'castle' || tags.tourism === 'ruins') score += 25;
+  else if (tags.tourism === 'artwork' || tags.tourism === 'gallery') score += 20;
+  else if (tags.tourism === 'viewpoint') score += 15;
+
+  if (tags.historic === 'castle' || tags.historic === 'ruins') score += 25;
+  else if (tags.historic === 'archaeological_site' || tags.historic === 'heritage_site') score += 22;
+  else if (tags.historic === 'monument') score += 18;
+  else if (tags.historic === 'memorial') score += 10;
+
+  if (tags.amenity === 'theatre') score += 22;
+  else if (tags.amenity === 'cinema') score += 15;
+  else if (tags.amenity === 'library') score += 12;
+  else if (tags.amenity === 'place_of_worship') score += 14;
+
+  if (tags.leisure === 'nature_reserve') score += 20;
+  else if (tags.leisure === 'garden') score += 16;
+  else if (tags.leisure === 'park') score += 12;
+
+  if (tags.wikipedia) score += 8;
+  if (tags.wikidata) score += 5;
+  if (tags.image || tags.wikimedia_commons || tags.mapillary) score += 10;
+  if (tags.description || tags['description:en']) score += 4;
+  if (tags['name:en']) score += 3;
+  if (tags.website) score += 3;
+  if (tags.heritage) score += 6;
+  if (tags['heritage:operator'] === 'UNESCO') score += 15;
+
+  return score;
 }
 
 export async function fetchNearbyPlacesOSM(params: {
@@ -147,8 +182,10 @@ async function fetchNearbyPlacesOSMSingle(
             sourceUrl: osmUrl,
             description: description || undefined,
             source: 'osm' as const,
+            score: scoreOSMElement(e.tags!),
           };
         })
+        .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
         .slice(0, params.limit);
     } catch (e) {
       lastError = String(e);

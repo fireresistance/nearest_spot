@@ -292,6 +292,7 @@ async function fetchFromHost(
       sourceUrl: page.fullurl,
       description: page.extract?.trim(),
       source: 'wikipedia',
+      score: (thumbnailUrl ? 20 : 0) + (page.extract?.trim() ? 5 : 0),
     });
   }
 

@@ -158,7 +158,7 @@ export function NearbyScreen({ navigation }: Props) {
             lat: coords.lat,
             lon: coords.lon,
             radiusMeters: settings.radiusMeters,
-            limit: 50,
+            limit: 100,
           }),
         ]);
 
@@ -260,6 +260,15 @@ export function NearbyScreen({ navigation }: Props) {
           places = places.filter((p) => !!p.thumbnailUrl);
           console.log('[NEARBY] requireImage filter:', before, '->', places.length);
         }
+
+        places.sort((a, b) => {
+          const aImg = a.thumbnailUrl ? 40 : 0;
+          const bImg = b.thumbnailUrl ? 40 : 0;
+          const aScore = (a.score ?? 0) + aImg;
+          const bScore = (b.score ?? 0) + bImg;
+          if (aScore !== bScore) return bScore - aScore;
+          return (a.distanceMeters ?? 0) - (b.distanceMeters ?? 0);
+        });
       }
 
       const existingIds = queueIdsRef.current;
