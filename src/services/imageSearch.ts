@@ -88,23 +88,20 @@ export async function searchOpenverse(title: string): Promise<string | undefined
 }
 
 export async function searchImageFallback(title: string): Promise<string | undefined> {
-  console.log('[IMG_FALLBACK] start:', title);
-
   if (hasChineseChars(title)) {
     const baikeImg = await searchBaikeImage(title);
-    if (baikeImg) { console.log('[IMG_FALLBACK] baike ok:', title); return baikeImg; }
+    if (baikeImg) return baikeImg;
   }
 
   const wikiThumb = await searchWikipediaThumbnail(title);
-  if (wikiThumb) { console.log('[IMG_FALLBACK] wiki-thumb ok:', title); return wikiThumb; }
+  if (wikiThumb) return wikiThumb;
 
   const wikiResult = await searchWikimediaCommons(title);
-  if (wikiResult) { console.log('[IMG_FALLBACK] commons ok:', title); return wikiResult; }
+  if (wikiResult) return wikiResult;
 
   const openverseResult = await searchOpenverse(title);
-  if (openverseResult) { console.log('[IMG_FALLBACK] openverse ok:', title); return openverseResult; }
+  if (openverseResult) return openverseResult;
 
-  console.log('[IMG_FALLBACK] nothing found:', title);
   return undefined;
 }
 

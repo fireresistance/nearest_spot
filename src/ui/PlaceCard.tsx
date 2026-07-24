@@ -17,7 +17,6 @@ export function PlaceCard(props: {
   const eta = meters !== undefined ? estimateEtaMinutes(meters, props.travelMode) : null;
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
-  const [imgErrorInfo, setImgErrorInfo] = useState<string>('');
 
   const thumbnailUrl = proxyImageUrl(props.place.thumbnailUrl, props.region);
 
@@ -33,7 +32,6 @@ export function PlaceCard(props: {
   useEffect(() => {
     setImgError(false);
     setImgLoaded(false);
-    setImgErrorInfo('');
   }, [thumbnailUrl]);
 
   const hasImage = !!thumbnailUrl && !imgError;
@@ -50,13 +48,10 @@ export function PlaceCard(props: {
               headers: imageHeaders,
             }}
             style={styles.image}
-            onError={(e) => {
-              const err = e?.nativeEvent?.error ?? 'unknown';
-              console.log('[IMG_ERR]', thumbnailUrl, String(err).substring(0, 120));
-              setImgErrorInfo(String(err).substring(0, 80));
+            onError={() => {
               setImgError(true);
             }}
-            onLoad={() => { console.log('[IMG_OK]', thumbnailUrl?.substring(0, 80)); setImgLoaded(true); }}
+            onLoad={() => setImgLoaded(true)}
           />
         ) : null}
         {showPlaceholder ? (
@@ -69,9 +64,6 @@ export function PlaceCard(props: {
                 <Text style={styles.placeholderText} numberOfLines={1}>
                   {props.place.title}
                 </Text>
-                {imgErrorInfo ? (
-                  <Text style={styles.debugText}>err:{imgErrorInfo}</Text>
-                ) : null}
               </>
             )}
           </View>
@@ -130,11 +122,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     maxWidth: '80%',
-  },
-  debugText: {
-    color: 'rgba(255,200,0,0.7)',
-    fontSize: 10,
-    maxWidth: '90%',
   },
   scrim: {
     position: 'absolute',

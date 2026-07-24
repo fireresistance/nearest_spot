@@ -1,3 +1,5 @@
+export type PlaceCategory = 'museum' | 'park' | 'worship' | 'monument' | 'historic' | 'other';
+
 export type Place = {
   id: string;
   title: string;
@@ -7,7 +9,8 @@ export type Place = {
   thumbnailUrl?: string;
   sourceUrl?: string;
   description?: string;
-  source: 'wikipedia' | 'osm' | 'amap' | 'baidu';
+  source: 'wikipedia' | 'osm' | 'amap' | 'baidu' | 'google';
+  category?: PlaceCategory;
   score?: number;
 };
 

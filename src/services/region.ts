@@ -62,6 +62,16 @@ export function getRegionInfo(region: Region): RegionInfo {
   return { ...REGIONS[region], region };
 }
 
+export function resolveRegion(
+  override: Region | 'auto',
+  lat: number | undefined,
+  lon: number | undefined,
+): Region {
+  if (override !== 'auto') return override;
+  if (lat === undefined || lon === undefined) return 'other';
+  return detectRegion(lat, lon);
+}
+
 export function isChina(lat: number, lon: number): boolean {
   return detectRegion(lat, lon) === 'china';
 }

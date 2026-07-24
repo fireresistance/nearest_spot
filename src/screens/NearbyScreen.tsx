@@ -1,26 +1,41 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Linking, PanResponder, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, PanResponder, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useApp, openAppSettings } from '../state/AppProvider';
-import { fetchNearbyPlaces, enrichPlacesWithImages } from '../services/wikipedia';
+import { fetchNearbyPlaces } from '../services/wikipedia';
 import { fetchNearbyPlacesOSM } from '../services/osm';
 import { fetchNearbyPlacesAmap } from '../services/amap';
-import { enrichPlaceWithBaike } from '../services/baidu';
 import { searchBaikeImage } from '../services/baiduImage';
 import { fetchNearbyPlacesGoogle, searchGooglePhoto } from '../services/google';
 import { enrichPlacesWithFallbackImages } from '../services/imageSearch';
 import { detectRegion, type Region } from '../services/region';
-import { proxyImageUrl } from '../services/imageProxy';
 import { openNavigationPicker } from '../services/navigation';
 import type { NearbyStackParamList } from '../navigation/RootNavigator';
 import { PrimaryButton } from '../ui/PrimaryButton';
 import { PlaceCard } from '../ui/PlaceCard';
-import type { Place } from '../types/place';
+import { useTheme, type Theme } from '../ui/theme';
+import type { Place, PlaceCategory } from '../types/place';
 import { MOCK_LOCATIONS } from '../constants/mockLocations';
 
 type Props = NativeStackScreenProps<NearbyStackParamList, 'Nearby'>;
 
+type SourceStage = 'google' | 'amap' | 'wiki' | 'done';
+
+const UNDO_TIMEOUT_MS = 4000;
+
+const CATEGORY_OPTIONS: { value: PlaceCategory | 'all'; label: string }[] = [
+  { value: 'all', label: 'Все' },
+  { value: 'museum', label: 'Музеи' },
+  { value: 'park', label: 'Парки' },
+  { value: 'worship', label: 'Храмы' },
+  { value: 'monument', label: 'Памятники' },
+  { value: 'historic', label: 'История' },
+  { value: 'other', label: 'Другое' },
+];
+
 export function NearbyScreen({ navigation }: Props) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const {
     settings,
     location,
@@ -29,6 +44,7 @@ export function NearbyScreen({ navigation }: Props) {
     setLocationOverride,
     seenPlaceIds,
     markSeen,
+    unmarkSeen,
     isSaved,
     toggleSaved,
   } = useApp();
@@ -40,6 +56,13 @@ export function NearbyScreen({ navigation }: Props) {
   const exhaustedRef = useRef(false);
   const queueIdsRef = useRef<Set<string>>(new Set());
   const [currentRegion, setCurrentRegion] = useState<Region>('other');
+  const [undoPlace, setUndoPlace] = useState<Place | null>(null);
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const stageRef = useRef<SourceStage>('google');
+  const googleTokenRef = useRef<string | undefined>(undefined);
+  const amapPageRef = useRef(1);
+  const amapHasMoreRef = useRef(true);
 
   const loadingRef = useRef(false);
   const seenPlaceIdsRef = useRef(seenPlaceIds);
@@ -51,6 +74,16 @@ export function NearbyScreen({ navigation }: Props) {
     exhaustedRef.current = v;
     setExhausted(v);
   }, []);
+
+  const resetFeed = useCallback(() => {
+    setQueue([]);
+    queueIdsRef.current.clear();
+    setExhaustedBoth(false);
+    stageRef.current = 'google';
+    googleTokenRef.current = undefined;
+    amapPageRef.current = 1;
+    amapHasMoreRef.current = true;
+  }, [setExhaustedBoth]);
 
   const canLoad = location.status === 'granted';
 
@@ -92,196 +125,202 @@ export function NearbyScreen({ navigation }: Props) {
     setLoading(true);
     setError(null);
     try {
-      let places: Place[] = [];
       const region =
         settings.regionOverride === 'auto'
           ? detectRegion(coords.lat, coords.lon)
           : settings.regionOverride;
       setCurrentRegion(region);
 
-      if (settings.googleKey) {
-        try {
-          places = await fetchNearbyPlacesGoogle({
-            lat: coords.lat,
-            lon: coords.lon,
-            radiusMeters: settings.radiusMeters,
-            limit: 30,
-            googleKey: settings.googleKey,
-            requireImage: settings.requireImage,
-          });
-        } catch (e) {
-          console.log('[NEARBY] Google Places failed:', String(e));
-        }
-      }
+      let addedAny = false;
+      let iterations = 0;
 
-      if (places.length === 0 && region === 'china' && settings.amapKey) {
-        try {
-          places = await fetchNearbyPlacesAmap({
-            lat: coords.lat,
-            lon: coords.lon,
-            radiusMeters: settings.radiusMeters,
-            limit: 20,
-            amapKey: settings.amapKey,
-            requireImage: settings.requireImage,
-          });
-          if (places.length > 0) {
-            const enriched = await Promise.all(
-              places.slice(0, 5).map(async (p) => {
-                if (p.thumbnailUrl) return p;
-                try {
-                  const imgUrl = await searchBaikeImage(p.title);
-                  return imgUrl ? { ...p, thumbnailUrl: imgUrl } as Place : p;
-                } catch {
-                  return p;
-                }
-              }),
-            );
-            const enrichedIds = new Set(enriched.map((p) => p.id));
-            places = [...enriched, ...places.filter((p) => !enrichedIds.has(p.id))];
+      while (!addedAny && iterations < 3) {
+        iterations += 1;
+        if (stageRef.current === 'done') break;
+
+        let places: Place[] = [];
+
+        if (stageRef.current === 'google') {
+          if (!settings.googleKey) {
+            stageRef.current = 'amap';
+            continue;
           }
-        } catch (e) {
-          console.log('[NEARBY] Amap failed:', String(e));
-        }
-      }
-
-      if (places.length === 0) {
-        const [wikiPlaces, osmPlaces] = await Promise.allSettled([
-          fetchNearbyPlaces({
-            lat: coords.lat,
-            lon: coords.lon,
-            radiusMeters: settings.radiusMeters,
-            limit: 30,
-            requireImage: false,
-            wikiLang: settings.wikiLang,
-          }),
-          fetchNearbyPlacesOSM({
-            lat: coords.lat,
-            lon: coords.lon,
-            radiusMeters: settings.radiusMeters,
-            limit: 100,
-          }),
-        ]);
-
-        const wiki = wikiPlaces.status === 'fulfilled' ? wikiPlaces.value : [];
-        const osm = osmPlaces.status === 'fulfilled' ? osmPlaces.value : [];
-        console.log(`[NEARBY] Combined: wiki=${wiki.length}, osm=${osm.length}`);
-
-        const seenCoords = new Set<string>();
-        const combined: Place[] = [];
-        for (const p of [...wiki, ...osm]) {
-          const key = `${p.lat.toFixed(3)},${p.lon.toFixed(3)}`;
-          if (seenCoords.has(key)) continue;
-          seenCoords.add(key);
-          combined.push(p);
-        }
-        places = combined;
-      }
-
-      if (places.length > 0) {
-        try {
-          places = await enrichPlacesWithImages(places, settings.wikiLang);
-        } catch {
-          // enrichment failed
-        }
-
-        if (region === 'china') {
-          const toEnrich = places.filter((p) => !p.thumbnailUrl).slice(0, 5);
-          if (toEnrich.length > 0) {
-            const baikeResults = await Promise.allSettled(
-              toEnrich.map(async (p) => {
-                const imgUrl = await searchBaikeImage(p.title);
-                return { id: p.id, thumbnailUrl: imgUrl };
-              }),
-            );
-            const baikeMap = new Map<string, string>();
-            for (const r of baikeResults) {
-              if (r.status === 'fulfilled' && r.value?.thumbnailUrl) {
-                baikeMap.set(r.value.id, r.value.thumbnailUrl);
-              }
-            }
-            if (baikeMap.size > 0) {
-              places = places.map((p) => {
-                const imgUrl = baikeMap.get(p.id);
-                if (!imgUrl) return p;
-                return { ...p, thumbnailUrl: imgUrl } as Place;
-              });
-            }
-          }
-        }
-
-        if (settings.googleKey) {
-          const withoutImg = places.filter((p) => !p.thumbnailUrl).slice(0, 5);
-          if (withoutImg.length > 0) {
-            const photoResults = await Promise.allSettled(
-              withoutImg.map(async (p) => {
-                const photoUrl = await searchGooglePhoto({
-                  title: p.title,
-                  lat: p.lat,
-                  lon: p.lon,
-                  googleKey: settings.googleKey,
-                });
-                return { id: p.id, thumbnailUrl: photoUrl };
-              }),
-            );
-            const photoMap = new Map<string, string>();
-            for (const r of photoResults) {
-              if (r.status === 'fulfilled' && r.value?.thumbnailUrl) {
-                photoMap.set(r.value.id, r.value.thumbnailUrl);
-              }
-            }
-            if (photoMap.size > 0) {
-              places = places.map((p) => {
-                const url = photoMap.get(p.id);
-                if (!url) return p;
-                return { ...p, thumbnailUrl: url } as Place;
-              });
-            }
-          }
-        }
-
-        const stillWithoutImg = places.filter((p) => !p.thumbnailUrl);
-        if (stillWithoutImg.length > 0) {
           try {
-            const fallbackMap = await enrichPlacesWithFallbackImages(stillWithoutImg, settings.requireImage ? 15 : 8);
-            if (fallbackMap.size > 0) {
-              places = places.map((p) => {
-                const url = fallbackMap.get(p.id);
-                if (!url) return p;
-                return { ...p, thumbnailUrl: url } as Place;
-              });
-            }
+            const page = await fetchNearbyPlacesGoogle({
+              lat: coords.lat,
+              lon: coords.lon,
+              radiusMeters: settings.radiusMeters,
+              googleKey: settings.googleKey,
+              requireImage: settings.requireImage,
+              pageToken: googleTokenRef.current,
+            });
+            googleTokenRef.current = page.nextPageToken;
+            places = page.places;
+            if (!page.nextPageToken) stageRef.current = 'amap';
           } catch {
-            // fallback image search failed
+            stageRef.current = 'amap';
           }
+          if (places.length === 0) continue;
         }
 
-        if (settings.requireImage) {
-          const before = places.length;
-          places = places.filter((p) => !!p.thumbnailUrl);
-          console.log('[NEARBY] requireImage filter:', before, '->', places.length);
+        if (stageRef.current === 'amap') {
+          if (region !== 'china' || !settings.amapKey || !amapHasMoreRef.current) {
+            stageRef.current = 'wiki';
+            continue;
+          }
+          try {
+            const page = await fetchNearbyPlacesAmap({
+              lat: coords.lat,
+              lon: coords.lon,
+              radiusMeters: settings.radiusMeters,
+              amapKey: settings.amapKey,
+              requireImage: settings.requireImage,
+              page: amapPageRef.current,
+            });
+            amapPageRef.current += 1;
+            amapHasMoreRef.current = page.hasMore;
+            places = page.places;
+            if (!page.hasMore) stageRef.current = 'wiki';
+          } catch {
+            stageRef.current = 'wiki';
+          }
+          if (places.length === 0) continue;
         }
 
-        places.sort((a, b) => {
-          const aImg = a.thumbnailUrl ? 40 : 0;
-          const bImg = b.thumbnailUrl ? 40 : 0;
-          const aScore = (a.score ?? 0) + aImg;
-          const bScore = (b.score ?? 0) + bImg;
-          if (aScore !== bScore) return bScore - aScore;
-          return (a.distanceMeters ?? 0) - (b.distanceMeters ?? 0);
-        });
+        if (stageRef.current === 'wiki') {
+          stageRef.current = 'done';
+          const [wikiPlaces, osmPlaces] = await Promise.allSettled([
+            fetchNearbyPlaces({
+              lat: coords.lat,
+              lon: coords.lon,
+              radiusMeters: settings.radiusMeters,
+              limit: 30,
+              requireImage: false,
+              wikiLang: settings.wikiLang,
+            }),
+            fetchNearbyPlacesOSM({
+              lat: coords.lat,
+              lon: coords.lon,
+              radiusMeters: settings.radiusMeters,
+              limit: 100,
+            }),
+          ]);
+
+          const wiki = wikiPlaces.status === 'fulfilled' ? wikiPlaces.value : [];
+          const osm = osmPlaces.status === 'fulfilled' ? osmPlaces.value : [];
+
+          const seenCoords = new Set<string>();
+          const combined: Place[] = [];
+          for (const p of [...wiki, ...osm]) {
+            const key = `${p.lat.toFixed(3)},${p.lon.toFixed(3)}`;
+            if (seenCoords.has(key)) continue;
+            seenCoords.add(key);
+            combined.push(p);
+          }
+          places = combined;
+          if (places.length === 0) break;
+        }
+
+        if (places.length > 0) {
+          if (region === 'china') {
+            const toEnrich = places.filter((p) => !p.thumbnailUrl).slice(0, 5);
+            if (toEnrich.length > 0) {
+              const baikeResults = await Promise.allSettled(
+                toEnrich.map(async (p) => {
+                  const imgUrl = await searchBaikeImage(p.title);
+                  return { id: p.id, thumbnailUrl: imgUrl };
+                }),
+              );
+              const baikeMap = new Map<string, string>();
+              for (const r of baikeResults) {
+                if (r.status === 'fulfilled' && r.value?.thumbnailUrl) {
+                  baikeMap.set(r.value.id, r.value.thumbnailUrl);
+                }
+              }
+              if (baikeMap.size > 0) {
+                places = places.map((p) => {
+                  const imgUrl = baikeMap.get(p.id);
+                  if (!imgUrl) return p;
+                  return { ...p, thumbnailUrl: imgUrl } as Place;
+                });
+              }
+            }
+          }
+
+          if (settings.googleKey) {
+            const withoutImg = places.filter((p) => !p.thumbnailUrl).slice(0, 5);
+            if (withoutImg.length > 0) {
+              const photoResults = await Promise.allSettled(
+                withoutImg.map(async (p) => {
+                  const photoUrl = await searchGooglePhoto({
+                    title: p.title,
+                    lat: p.lat,
+                    lon: p.lon,
+                    googleKey: settings.googleKey,
+                  });
+                  return { id: p.id, thumbnailUrl: photoUrl };
+                }),
+              );
+              const photoMap = new Map<string, string>();
+              for (const r of photoResults) {
+                if (r.status === 'fulfilled' && r.value?.thumbnailUrl) {
+                  photoMap.set(r.value.id, r.value.thumbnailUrl);
+                }
+              }
+              if (photoMap.size > 0) {
+                places = places.map((p) => {
+                  const url = photoMap.get(p.id);
+                  if (!url) return p;
+                  return { ...p, thumbnailUrl: url } as Place;
+                });
+              }
+            }
+          }
+
+          const stillWithoutImg = places.filter((p) => !p.thumbnailUrl);
+          if (stillWithoutImg.length > 0) {
+            try {
+              const fallbackMap = await enrichPlacesWithFallbackImages(stillWithoutImg, settings.requireImage ? 15 : 8);
+              if (fallbackMap.size > 0) {
+                places = places.map((p) => {
+                  const url = fallbackMap.get(p.id);
+                  if (!url) return p;
+                  return { ...p, thumbnailUrl: url } as Place;
+                });
+              }
+            } catch {
+              // fallback image search failed
+            }
+          }
+
+          if (settings.requireImage) {
+            places = places.filter((p) => !!p.thumbnailUrl);
+          }
+
+          places.sort((a, b) => {
+            const aImg = a.thumbnailUrl ? 40 : 0;
+            const bImg = b.thumbnailUrl ? 40 : 0;
+            const aScore = (a.score ?? 0) + aImg;
+            const bScore = (b.score ?? 0) + bImg;
+            if (aScore !== bScore) return bScore - aScore;
+            return (a.distanceMeters ?? 0) - (b.distanceMeters ?? 0);
+          });
+        }
+
+        const existingIds = queueIdsRef.current;
+        const seenIds = seenPlaceIdsRef.current;
+        let wouldAdd = 0;
+        for (const p of places) {
+          if (seenIds.has(p.id)) continue;
+          if (seenInSessionRef.current.has(p.id)) continue;
+          if (existingIds.has(p.id)) continue;
+          wouldAdd += 1;
+        }
+        enqueueUnique(places);
+        addedAny = wouldAdd > 0;
       }
 
-      const existingIds = queueIdsRef.current;
-      const seenIds = seenPlaceIdsRef.current;
-      let wouldAdd = 0;
-      for (const p of places) {
-        if (seenIds.has(p.id)) continue;
-        if (seenInSessionRef.current.has(p.id)) continue;
-        if (existingIds.has(p.id)) continue;
-        wouldAdd += 1;
-      }
-      enqueueUnique(places);
-      if (wouldAdd === 0) {
+      if (!addedAny && stageRef.current === 'done') {
         setExhaustedBoth(true);
       }
     } catch (e) {
@@ -298,15 +337,16 @@ export function NearbyScreen({ navigation }: Props) {
     loadMoreRef.current = loadMore;
   }, [loadMore]);
 
+  const lat = location.status === 'granted' ? location.coords.lat : 0;
+  const lon = location.status === 'granted' ? location.coords.lon : 0;
+
   useEffect(() => {
-    setQueue([]);
-    queueIdsRef.current.clear();
-    setExhaustedBoth(false);
+    resetFeed();
     if (location.status === 'granted') {
       void loadMoreRef.current();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.status, settings.radiusMeters, settings.requireImage, settings.wikiLang, settings.amapKey, settings.googleKey, settings.regionOverride, setExhaustedBoth]);
+  }, [location.status, lat, lon, settings.radiusMeters, settings.requireImage, settings.wikiLang, settings.amapKey, settings.googleKey, settings.regionOverride, resetFeed]);
 
   useEffect(() => {
     if (!exhausted && queue.length < 15 && !loading && location.status === 'granted') {
@@ -320,15 +360,42 @@ export function NearbyScreen({ navigation }: Props) {
     }
   }, [seenPlaceIds]);
 
-  const current = queue[0];
+  useEffect(() => {
+    return () => {
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    };
+  }, []);
+
+  const [categoryFilter, setCategoryFilter] = useState<PlaceCategory | 'all'>('all');
+  const visibleQueue = useMemo(
+    () =>
+      categoryFilter === 'all'
+        ? queue
+        : queue.filter((p) => (p.category ?? 'other') === categoryFilter),
+    [queue, categoryFilter],
+  );
+
+  const current = visibleQueue[0];
   const swipeX = useRef(new Animated.Value(0)).current;
 
   const dismissCurrent = useCallback(() => {
     if (!current) return;
     seenInSessionRef.current.add(current.id);
     markSeen(current.id);
-    setQueue((prev) => prev.slice(1));
+    setQueue((prev) => prev.filter((p) => p.id !== current.id));
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    setUndoPlace(current);
+    undoTimerRef.current = setTimeout(() => setUndoPlace(null), UNDO_TIMEOUT_MS);
   }, [current, markSeen]);
+
+  const undoDismiss = useCallback(() => {
+    if (!undoPlace) return;
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    seenInSessionRef.current.delete(undoPlace.id);
+    unmarkSeen(undoPlace.id);
+    setQueue((prev) => (prev.some((p) => p.id === undoPlace.id) ? prev : [undoPlace, ...prev]));
+    setUndoPlace(null);
+  }, [undoPlace, unmarkSeen]);
 
   const panResponder = useMemo(() => {
     const threshold = 120;
@@ -356,6 +423,14 @@ export function NearbyScreen({ navigation }: Props) {
     });
   }, [dismissCurrent, swipeX]);
 
+  const shareCurrent = useCallback(() => {
+    if (!current) return;
+    const url =
+      current.sourceUrl ??
+      `https://www.google.com/maps/search/?api=1&query=${current.lat},${current.lon}`;
+    void Share.share({ message: `${current.title}\n${url}` }).catch(() => {});
+  }, [current]);
+
   const actions = useMemo(() => {
     if (!current) return null;
 
@@ -369,22 +444,29 @@ export function NearbyScreen({ navigation }: Props) {
           }}
         />
         <View style={styles.actionsRow2}>
-          <PrimaryButton
-            title={saved ? 'Убрать' : 'Сохранить'}
-            variant="secondary"
-            onPress={() => toggleSaved(current)}
-          />
-          <PrimaryButton
-            title="Дальше"
-            variant="secondary"
-            onPress={() => {
-              dismissCurrent();
-            }}
-          />
+          <View style={styles.actionBtn}>
+            <PrimaryButton
+              title={saved ? 'Убрать' : 'Сохранить'}
+              variant="secondary"
+              onPress={() => toggleSaved(current)}
+            />
+          </View>
+          <View style={styles.actionBtn}>
+            <PrimaryButton
+              title="Дальше"
+              variant="secondary"
+              onPress={() => {
+                dismissCurrent();
+              }}
+            />
+          </View>
+          <View style={styles.actionBtn}>
+            <PrimaryButton title="Поделиться" variant="secondary" onPress={shareCurrent} />
+          </View>
         </View>
       </View>
     );
-  }, [current, dismissCurrent, isSaved, settings.travelMode, toggleSaved]);
+  }, [current, currentRegion, dismissCurrent, isSaved, settings.travelMode, shareCurrent, toggleSaved]);
 
   if (location.status === 'denied') {
     return (
@@ -444,6 +526,22 @@ export function NearbyScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
+      <View style={styles.chipsWrap}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsContent}>
+          {CATEGORY_OPTIONS.map((c) => {
+            const active = categoryFilter === c.value;
+            return (
+              <Pressable
+                key={c.value}
+                onPress={() => setCategoryFilter(c.value)}
+                style={[styles.chip, active ? styles.chipActive : null]}
+              >
+                <Text style={[styles.chipText, active ? styles.chipTextActive : null]}>{c.label}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
       {current ? (
         <Animated.View
           style={[
@@ -470,6 +568,11 @@ export function NearbyScreen({ navigation }: Props) {
             actions={actions}
           />
         </Animated.View>
+      ) : queue.length > 0 ? (
+        <View style={styles.center}>
+          <Text style={styles.title}>Нет мест в этой категории</Text>
+          <Text style={styles.body}>Попробуй другую категорию.</Text>
+        </View>
       ) : (
         <View style={styles.center}>
           {loading ? <ActivityIndicator /> : null}
@@ -479,9 +582,7 @@ export function NearbyScreen({ navigation }: Props) {
             <PrimaryButton
               title="Обновить"
               onPress={async () => {
-                setExhaustedBoth(false);
-                setQueue([]);
-                queueIdsRef.current.clear();
+                resetFeed();
                 await refreshLocation();
                 void loadMoreRef.current();
               }}
@@ -490,6 +591,14 @@ export function NearbyScreen({ navigation }: Props) {
           </View>
         </View>
       )}
+      {undoPlace ? (
+        <View style={styles.undoBar}>
+          <Text style={styles.undoText} numberOfLines={1}>
+            Скрыто: {undoPlace.title}
+          </Text>
+          <PrimaryButton title="Отменить" onPress={undoDismiss} />
+        </View>
+      ) : null}
       {error ? (
         <View style={styles.error}>
           <Text style={styles.errorText} numberOfLines={3}>
@@ -501,34 +610,64 @@ export function NearbyScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
-  swipeWrap: { flex: 1 },
-  center: {
-    flex: 1,
-    padding: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-  },
-  title: { fontSize: 20, fontWeight: '700', color: '#111827', textAlign: 'center' },
-  body: { fontSize: 15, color: '#374151', textAlign: 'center', lineHeight: 20 },
-  stack: { width: '100%', gap: 10, marginTop: 6 },
-  actionsRow: { gap: 10 },
-  actionsRow2: { flexDirection: 'row', gap: 10 },
-  mockBox: { width: '100%', gap: 8, marginTop: 6 },
-  mockTitle: { fontSize: 13, fontWeight: '700', color: '#111827', textAlign: 'center' },
-  mockRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center' },
-  error: {
-    position: 'absolute',
-    left: 12,
-    right: 12,
-    bottom: 12,
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FCA5A5',
-  },
-  errorText: { color: '#991B1B', fontSize: 13 },
-});
+const makeStyles = (t: Theme) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: t.bg },
+    swipeWrap: { flex: 1 },
+    chipsWrap: { borderBottomWidth: 1, borderBottomColor: t.sep },
+    chipsContent: { paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
+    chip: {
+      height: 34,
+      paddingHorizontal: 14,
+      borderRadius: 17,
+      backgroundColor: t.secondary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    chipActive: { backgroundColor: t.primary },
+    chipText: { fontSize: 13, fontWeight: '600', color: t.secondaryText },
+    chipTextActive: { color: t.primaryText },
+    center: {
+      flex: 1,
+      padding: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 12,
+      backgroundColor: t.bg,
+    },
+    title: { fontSize: 20, fontWeight: '700', color: t.text, textAlign: 'center' },
+    body: { fontSize: 15, color: t.textSecondary, textAlign: 'center', lineHeight: 20 },
+    stack: { width: '100%', gap: 10, marginTop: 6 },
+    actionsRow: { gap: 10 },
+    actionsRow2: { flexDirection: 'row', gap: 10 },
+    actionBtn: { flex: 1 },
+    mockBox: { width: '100%', gap: 8, marginTop: 6 },
+    mockTitle: { fontSize: 13, fontWeight: '700', color: t.text, textAlign: 'center' },
+    mockRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center' },
+    undoBar: {
+      position: 'absolute',
+      left: 12,
+      right: 12,
+      bottom: 12,
+      padding: 8,
+      paddingLeft: 14,
+      borderRadius: 12,
+      backgroundColor: t.isDark ? '#1F2937' : '#111827',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    undoText: { flex: 1, color: '#FFFFFF', fontSize: 13 },
+    error: {
+      position: 'absolute',
+      left: 12,
+      right: 12,
+      bottom: 12,
+      padding: 12,
+      borderRadius: 12,
+      backgroundColor: t.errorBg,
+      borderWidth: 1,
+      borderColor: t.errorBorder,
+    },
+    errorText: { color: t.errorText, fontSize: 13 },
+  });

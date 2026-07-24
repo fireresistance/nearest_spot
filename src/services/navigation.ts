@@ -1,20 +1,25 @@
-import { Linking, Alert } from 'react-native';
+import { Linking, Alert, Platform } from 'react-native';
 import type { TravelMode } from '../state/AppProvider';
 import type { Region } from './region';
 
 type NavApp = {
   id: string;
   label: string;
-  scheme: string;
-  buildUrl: (lat: number, lon: number, mode: TravelMode) => string;
+  appUrl: (lat: number, lon: number, mode: TravelMode) => string;
+  webUrl: (lat: number, lon: number, mode: TravelMode) => string;
 };
 
 const NAV_APPS: NavApp[] = [
   {
     id: 'google',
     label: 'Google Maps',
-    scheme: 'comgooglemaps://',
-    buildUrl: (lat, lon, mode) => {
+    appUrl: (lat, lon, mode) => {
+      const m = mode === 'walk' ? 'w' : 'd';
+      return Platform.OS === 'ios'
+        ? `comgooglemaps://?daddr=${lat},${lon}&directionsmode=${m === 'w' ? 'walking' : 'driving'}`
+        : `google.navigation:q=${lat},${lon}&mode=${m}`;
+    },
+    webUrl: (lat, lon, mode) => {
       const m = mode === 'walk' ? 'walking' : 'driving';
       return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}&travelmode=${m}`;
     },
@@ -22,17 +27,20 @@ const NAV_APPS: NavApp[] = [
   {
     id: 'yandex',
     label: 'Яндекс Карты',
-    scheme: 'yandexmaps://',
-    buildUrl: (lat, lon, mode) => {
+    appUrl: (lat, lon) => `yandexnavi://build_route_on_map?lat_to=${lat}&lon_to=${lon}`,
+    webUrl: (lat, lon, mode) => {
       const m = mode === 'walk' ? 'pd' : 'auto';
-      return `yandexmaps://maps.yandex.ru/?rtext=~${lat},${lon}&rtt=${m}`;
+      return `https://yandex.ru/maps/?rtext=~${lat},${lon}&rtt=${m}`;
     },
   },
   {
     id: 'amap',
     label: 'Amap (高德地图)',
-    scheme: 'iosamap://',
-    buildUrl: (lat, lon, mode) => {
+    appUrl: (lat, lon, mode) => {
+      const t = mode === 'walk' ? 2 : 0;
+      return `androidamap://route?sourceApplication=nearestspot&dlat=${lat}&dlon=${lon}&dname=dest&dev=0&t=${t}`;
+    },
+    webUrl: (lat, lon, mode) => {
       const m = mode === 'walk' ? 2 : 0;
       return `https://uri.amap.com/navigation?to=${lon},${lat}&mode=${m}&policy=1`;
     },
@@ -40,13 +48,26 @@ const NAV_APPS: NavApp[] = [
   {
     id: 'baidu',
     label: 'Baidu Maps (百度地图)',
-    scheme: 'baidumap://',
-    buildUrl: (lat, lon, mode) => {
+    appUrl: (lat, lon, mode) => {
       const m = mode === 'walk' ? 'walking' : 'driving';
-      return `http://api.map.baidu.com/direction?destination=latlng:${lat},${lon}|name=dest&mode=${m}&coord_type=gcj02&output=html`;
+      return `baidumap://map/direction?destination=latlng:${lat},${lon}|name:dest&mode=${m}&coord_type=gcj02`;
+    },
+    webUrl: (lat, lon, mode) => {
+      const m = mode === 'walk' ? 'walking' : 'driving';
+      return `https://api.map.baidu.com/direction?destination=latlng:${lat},${lon}|name=dest&mode=${m}&coord_type=gcj02&output=html`;
     },
   },
 ];
+
+async function openNavApp(app: NavApp, lat: number, lon: number, mode: TravelMode): Promise<void> {
+  try {
+    await Linking.openURL(app.appUrl(lat, lon, mode));
+    return;
+  } catch {
+    // app not installed, fall back to web
+  }
+  await Linking.openURL(app.webUrl(lat, lon, mode)).catch(() => {});
+}
 
 export function openNavigationPicker(
   lat: number,
@@ -73,10 +94,7 @@ export function openNavigationPicker(
   const buttons = sorted.map((app) => ({
     text: app.label,
     onPress: () => {
-      const url = app.buildUrl(lat, lon, travelMode);
-      Linking.openURL(url).catch(() => {
-        Linking.openURL(app.buildUrl(lat, lon, travelMode)).catch(() => {});
-      });
+      void openNavApp(app, lat, lon, travelMode);
     },
   }));
 

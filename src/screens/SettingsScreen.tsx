@@ -1,11 +1,12 @@
 import { ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useApp } from '../state/AppProvider';
 import { PrimaryButton } from '../ui/PrimaryButton';
 import { MOCK_LOCATIONS } from '../constants/mockLocations';
 import { WIKI_LANG_OPTIONS } from '../services/wikipedia';
 import { detectRegion, getRegionInfo } from '../services/region';
 import type { Region } from '../services/region';
+import { useTheme, type Theme } from '../ui/theme';
 
 const REGION_OPTIONS: { value: Region | 'auto'; label: string }[] = [
   { value: 'auto', label: 'Авто' },
@@ -21,6 +22,8 @@ export function SettingsScreen() {
   const { settings, setSettings, resetSeen, refreshLocation, locationOverride, setLocationOverride, location } =
     useApp();
   const [customRadius, setCustomRadius] = useState('');
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
 
   const detectedRegion =
     location.status === 'granted' ? detectRegion(location.coords.lat, location.coords.lon) : null;
@@ -29,6 +32,22 @@ export function SettingsScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.section}>
+        <Text style={styles.h}>Тема</Text>
+        <View style={styles.row}>
+          <PrimaryButton
+            title="Светлая"
+            variant={settings.theme === 'light' ? 'primary' : 'secondary'}
+            onPress={() => setSettings((s) => ({ ...s, theme: 'light' }))}
+          />
+          <PrimaryButton
+            title="Тёмная"
+            variant={settings.theme === 'dark' ? 'primary' : 'secondary'}
+            onPress={() => setSettings((s) => ({ ...s, theme: 'dark' }))}
+          />
+        </View>
+      </View>
+
       {regionInfo && (
         <View style={styles.section}>
           <Text style={styles.h}>
@@ -229,28 +248,29 @@ export function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
-  content: { padding: 16, paddingBottom: 40 },
-  section: {
-    padding: 14,
-    borderRadius: 16,
-    backgroundColor: '#F9FAFB',
-    marginBottom: 16,
-  },
-  h: { fontSize: 16, fontWeight: '800', color: '#111827' },
-  sub: { fontSize: 13, color: '#6B7280', marginBottom: 4 },
-  tip: { fontSize: 13, color: '#B45309', fontWeight: '500' },
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 8 },
-  switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  switchText: { flex: 1, gap: 4 },
-  input: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 10,
-    padding: 10,
-    fontSize: 14,
-    color: '#111827',
-    backgroundColor: '#FFFFFF',
-  },
-});
+const makeStyles = (t: Theme) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: t.bg },
+    content: { padding: 16, paddingBottom: 40 },
+    section: {
+      padding: 14,
+      borderRadius: 16,
+      backgroundColor: t.card,
+      marginBottom: 16,
+    },
+    h: { fontSize: 16, fontWeight: '800', color: t.text },
+    sub: { fontSize: 13, color: t.textMuted, marginBottom: 4 },
+    tip: { fontSize: 13, color: '#B45309', fontWeight: '500' },
+    row: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 8 },
+    switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+    switchText: { flex: 1, gap: 4 },
+    input: {
+      borderWidth: 1,
+      borderColor: t.border,
+      borderRadius: 10,
+      padding: 10,
+      fontSize: 14,
+      color: t.text,
+      backgroundColor: t.inputBg,
+    },
+  });

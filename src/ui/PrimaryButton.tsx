@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text } from 'react-native';
+import { useTheme } from './theme';
 
 export function PrimaryButton(props: {
   title: string;
@@ -6,6 +7,7 @@ export function PrimaryButton(props: {
   disabled?: boolean;
   variant?: 'primary' | 'secondary';
 }) {
+  const theme = useTheme();
   const variant = props.variant ?? 'primary';
   return (
     <Pressable
@@ -13,12 +15,19 @@ export function PrimaryButton(props: {
       disabled={props.disabled}
       style={({ pressed }) => [
         styles.base,
-        variant === 'primary' ? styles.primary : styles.secondary,
+        variant === 'primary'
+          ? { backgroundColor: theme.primary }
+          : { backgroundColor: theme.secondary },
         props.disabled ? styles.disabled : null,
         pressed && !props.disabled ? styles.pressed : null,
       ]}
     >
-      <Text style={[styles.text, variant === 'primary' ? styles.textPrimary : styles.textSecondary]}>
+      <Text
+        style={[
+          styles.text,
+          { color: variant === 'primary' ? theme.primaryText : theme.secondaryText },
+        ]}
+      >
         {props.title}
       </Text>
     </Pressable>
@@ -33,12 +42,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 16,
   },
-  primary: {
-    backgroundColor: '#111827',
-  },
-  secondary: {
-    backgroundColor: '#E5E7EB',
-  },
   disabled: {
     opacity: 0.5,
   },
@@ -49,11 +52,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  textPrimary: {
-    color: '#FFFFFF',
-  },
-  textSecondary: {
-    color: '#111827',
-  },
 });
-

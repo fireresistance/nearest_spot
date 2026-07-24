@@ -1,19 +1,20 @@
 import { useMemo } from 'react';
-import { Dimensions, FlatList, Image, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, FlatList, Image, Linking, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { NearbyStackParamList, SavedStackParamList } from '../navigation/RootNavigator';
 import { useApp } from '../state/AppProvider';
-import { buildMapsDirectionsUrl } from '../services/wikipedia';
 import { PrimaryButton } from '../ui/PrimaryButton';
-import { detectRegion } from '../services/region';
+import { resolveRegion } from '../services/region';
 import { proxyImageUrl } from '../services/imageProxy';
 import { openNavigationPicker } from '../services/navigation';
+import { useTheme, type Theme } from '../ui/theme';
 
 const SOURCE_LABELS: Record<string, string> = {
   wikipedia: 'Wikipedia',
   osm: 'OpenStreetMap',
   amap: '高德地图 Amap',
   baidu: '百度百科 Baidu',
+  google: 'Google Places',
 };
 
 function sourceLabel(source: string): string {
@@ -26,31 +27,42 @@ type Props =
 
 export function PlaceDetailsScreen({ route }: Props) {
   const { place } = route.params;
-  const { settings, isSaved, toggleSaved } = useApp();
+  const { settings, location, isSaved, toggleSaved } = useApp();
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const width = Dimensions.get('window').width;
 
+  const userLat = location.status === 'granted' ? location.coords.lat : undefined;
+  const userLon = location.status === 'granted' ? location.coords.lon : undefined;
+  const region = resolveRegion(settings.regionOverride, userLat, userLon);
+
+  const imageUrl = useMemo(
+    () => proxyImageUrl(place.thumbnailUrl, region),
+    [place.thumbnailUrl, region],
+  );
+
   const imageHeaders = useMemo(() => {
-    const region = detectRegion(place.lat, place.lon);
-    const proxied = proxyImageUrl(place.thumbnailUrl, region);
     const headers: Record<string, string> = {
       'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
     };
-    if (proxied?.includes('bkimg.cdn.bcebos.com') || proxied?.includes('baike.baidu.com')) {
+    if (imageUrl?.includes('bkimg.cdn.bcebos.com') || imageUrl?.includes('baike.baidu.com')) {
       headers['Referer'] = 'https://baike.baidu.com/';
-    } else if (proxied?.includes('wikimedia.org') || proxied?.includes('wikipedia.org')) {
+    } else if (imageUrl?.includes('wikimedia.org') || imageUrl?.includes('wikipedia.org')) {
       headers['Referer'] = 'https://en.wikipedia.org/';
     }
     return headers;
-  }, [place.thumbnailUrl, place.lat, place.lon]);
+  }, [imageUrl]);
 
-  const images = useMemo(() => {
-    const region = detectRegion(place.lat, place.lon);
-    const proxied = proxyImageUrl(place.thumbnailUrl, region);
-    const arr = proxied ? [proxied] : [];
-    return arr;
-  }, [place.thumbnailUrl, place.lat, place.lon]);
+  const images = useMemo(() => (imageUrl ? [imageUrl] : []), [imageUrl]);
 
   const saved = isSaved(place.id);
+
+  const sharePlace = () => {
+    const url =
+      place.sourceUrl ??
+      `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lon}`;
+    void Share.share({ message: `${place.title}\n${url}` }).catch(() => {});
+  };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -79,7 +91,6 @@ export function PlaceDetailsScreen({ route }: Props) {
           <PrimaryButton
             title="Маршрут"
             onPress={() => {
-              const region = detectRegion(place.lat, place.lon);
               openNavigationPicker(place.lat, place.lon, settings.travelMode, region);
             }}
           />
@@ -88,6 +99,7 @@ export function PlaceDetailsScreen({ route }: Props) {
             variant="secondary"
             onPress={() => toggleSaved(place)}
           />
+          <PrimaryButton title="Поделиться" variant="secondary" onPress={sharePlace} />
           {place.sourceUrl ? (
             <PrimaryButton
               title="Открыть источник"
@@ -107,15 +119,16 @@ export function PlaceDetailsScreen({ route }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
-  content: { paddingBottom: 24 },
-  media: { height: 320, backgroundColor: '#0F172A' },
-  image: { height: 320, resizeMode: 'cover' },
-  imagePlaceholder: { flex: 1, backgroundColor: '#0F172A' },
-  section: { paddingHorizontal: 16, paddingTop: 16, gap: 10 },
-  title: { fontSize: 24, fontWeight: '800', color: '#111827' },
-  body: { fontSize: 15, lineHeight: 21, color: '#374151' },
-  buttons: { gap: 10 },
-  meta: { fontSize: 13, color: '#6B7280' },
-});
+const makeStyles = (t: Theme) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: t.bg },
+    content: { paddingBottom: 24 },
+    media: { height: 320, backgroundColor: t.mediaBg },
+    image: { height: 320, resizeMode: 'cover' },
+    imagePlaceholder: { flex: 1, backgroundColor: t.mediaBg },
+    section: { paddingHorizontal: 16, paddingTop: 16, gap: 10 },
+    title: { fontSize: 24, fontWeight: '800', color: t.text },
+    body: { fontSize: 15, lineHeight: 21, color: t.textSecondary },
+    buttons: { gap: 10 },
+    meta: { fontSize: 13, color: t.textMuted },
+  });

@@ -8,6 +8,7 @@ import type { WikiLang } from '../services/wikipedia';
 import type { Region } from '../services/region';
 
 export type TravelMode = 'walk' | 'drive';
+export type ThemeMode = 'light' | 'dark';
 
 export type Settings = {
   radiusMeters: number;
@@ -17,6 +18,7 @@ export type Settings = {
   amapKey: string;
   googleKey: string;
   regionOverride: Region | 'auto';
+  theme: ThemeMode;
 };
 
 type LocationState =
@@ -33,6 +35,7 @@ type AppState = {
   setLocationOverride: (override: LocationOverride) => void;
   seenPlaceIds: Set<string>;
   markSeen: (placeId: string) => void;
+  unmarkSeen: (placeId: string) => void;
   resetSeen: () => void;
   savedPlaces: Record<string, Place>;
   toggleSaved: (place: Place) => void;
@@ -52,7 +55,10 @@ const DEFAULT_SETTINGS: Settings = {
   amapKey: '',
   googleKey: '',
   regionOverride: 'auto',
+  theme: 'light',
 };
+
+const MAX_SEEN_IDS = 5000;
 
 const AppContext = createContext<AppState | null>(null);
 
@@ -81,7 +87,7 @@ export function AppProvider(props: { children: React.ReactNode; initialLocationO
         readJson<Record<string, Place>>(SAVED_KEY),
         readJson<LocationOverride>(LOCATION_OVERRIDE_KEY),
       ]);
-      if (storedSettings) setSettingsState(storedSettings);
+      if (storedSettings) setSettingsState({ ...DEFAULT_SETTINGS, ...storedSettings });
       if (storedSeen) setSeenPlaceIds(new Set(storedSeen));
       if (storedSaved) setSavedPlaces(storedSaved);
       if (storedLocationOverride) {
@@ -192,6 +198,21 @@ export function AppProvider(props: { children: React.ReactNode; initialLocationO
       if (prev.has(placeId)) return prev;
       const next = new Set(prev);
       next.add(placeId);
+      while (next.size > MAX_SEEN_IDS) {
+        const oldest = next.values().next().value;
+        if (oldest === undefined) break;
+        next.delete(oldest);
+      }
+      void writeJson(SEEN_KEY, Array.from(next));
+      return next;
+    });
+  }, []);
+
+  const unmarkSeen = useCallback((placeId: string) => {
+    setSeenPlaceIds((prev) => {
+      if (!prev.has(placeId)) return prev;
+      const next = new Set(prev);
+      next.delete(placeId);
       void writeJson(SEEN_KEY, Array.from(next));
       return next;
     });
@@ -229,6 +250,7 @@ export function AppProvider(props: { children: React.ReactNode; initialLocationO
       setLocationOverride,
       seenPlaceIds,
       markSeen,
+      unmarkSeen,
       resetSeen,
       savedPlaces,
       toggleSaved,
@@ -239,6 +261,7 @@ export function AppProvider(props: { children: React.ReactNode; initialLocationO
       location,
       locationOverride,
       markSeen,
+      unmarkSeen,
       refreshLocation,
       resetSeen,
       savedPlaces,

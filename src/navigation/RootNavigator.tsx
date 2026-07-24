@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NearbyScreen } from '../screens/NearbyScreen';
 import { PlaceDetailsScreen } from '../screens/PlaceDetailsScreen';
 import { SavedScreen } from '../screens/SavedScreen';
+import { SavedMapScreen } from '../screens/SavedMapScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import type { Place } from '../types/place';
 
@@ -13,6 +14,7 @@ export type NearbyStackParamList = {
 
 export type SavedStackParamList = {
   Saved: undefined;
+  SavedMap: undefined;
   PlaceDetails: { place: Place };
 };
 
@@ -42,6 +44,11 @@ function SavedStackNavigator() {
         name="Saved"
         component={SavedScreen}
         options={{ title: 'Сохранённые' }}
+      />
+      <SavedStack.Screen
+        name="SavedMap"
+        component={SavedMapScreen}
+        options={{ title: 'Карта' }}
       />
       <SavedStack.Screen
         name="PlaceDetails"

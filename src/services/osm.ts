@@ -1,4 +1,4 @@
-import type { Place } from '../types/place';
+import type { Place, PlaceCategory } from '../types/place';
 import { isBoring } from './wikipedia';
 
 const OVERPASS_URLS = [
@@ -84,6 +84,15 @@ function scoreOSMElement(tags: Record<string, string>): number {
   return score;
 }
 
+function categoryFromTags(tags: Record<string, string>): PlaceCategory {
+  if (tags.tourism === 'museum' || tags.tourism === 'gallery' || tags.amenity === 'library' || tags.amenity === 'theatre' || tags.amenity === 'cinema') return 'museum';
+  if (tags.leisure === 'park' || tags.leisure === 'garden' || tags.leisure === 'nature_reserve') return 'park';
+  if (tags.amenity === 'place_of_worship') return 'worship';
+  if (tags.historic === 'monument' || tags.historic === 'memorial') return 'monument';
+  if (tags.historic) return 'historic';
+  return 'other';
+}
+
 export async function fetchNearbyPlacesOSM(params: {
   lat: number;
   lon: number;
@@ -99,7 +108,6 @@ export async function fetchNearbyPlacesOSM(params: {
 
   const { generateCoverPoints } = await import('./coverGrid');
   const points = generateCoverPoints(params.lat, params.lon, requestedRadius, maxApiRadius);
-  console.log(`[OSM] Multi-query: ${requestedRadius}m radius → ${points.length} sub-queries`);
 
   const allPlaces: Place[] = [];
   const seenIds = new Set<string>();
@@ -128,7 +136,6 @@ export async function fetchNearbyPlacesOSM(params: {
     if (allPlaces.length >= params.limit * 2) break;
   }
 
-  console.log(`[OSM] Multi-query total: ${allPlaces.length} places`);
   return allPlaces.slice(0, params.limit);
 }
 
@@ -169,8 +176,7 @@ async function fetchNearbyPlacesOSMSingle(
         .map<Place>((e) => {
           const name = e.tags!.name ?? '';
           const nameEn = e.tags!['name:en'] ?? '';
-          const description =
-            e.tags!.description ?? e.tags!['description:en'] ?? e.tags!.wikipedia ?? '';
+          const description = e.tags!.description ?? e.tags!['description:en'];
           const osmUrl = `https://www.openstreetmap.org/${e.type}/${e.id}`;
           const thumbnailUrl = getThumbnailUrl(e.tags!);
           return {
@@ -182,6 +188,7 @@ async function fetchNearbyPlacesOSMSingle(
             sourceUrl: osmUrl,
             description: description || undefined,
             source: 'osm' as const,
+            category: categoryFromTags(e.tags!),
             score: scoreOSMElement(e.tags!),
           };
         })

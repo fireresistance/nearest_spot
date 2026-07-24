@@ -155,7 +155,6 @@ export async function fetchNearbyPlaces(params: {
 
   const { generateCoverPoints } = await import('./coverGrid');
   const points = generateCoverPoints(params.lat, params.lon, requestedRadius, maxApiRadius);
-  console.log(`[WIKI] Multi-query: ${requestedRadius}m radius → ${points.length} sub-queries`);
 
   const allPlaces: Place[] = [];
   const seenIds = new Set<string>();
@@ -191,7 +190,6 @@ export async function fetchNearbyPlaces(params: {
     return (a.distanceMeters ?? 0) - (b.distanceMeters ?? 0);
   });
 
-  console.log(`[WIKI] Multi-query total: ${allPlaces.length} places`);
   return allPlaces.slice(0, params.limit);
 }
 
@@ -302,22 +300,5 @@ async function fetchFromHost(
     if (aImg !== bImg) return aImg - bImg;
     return (a.distanceMeters ?? 0) - (b.distanceMeters ?? 0);
   });
-  const withImg = places.filter((p) => p.thumbnailUrl).length;
-  console.log(`[WIKI] ${host} → ${places.length} places, ${withImg} with thumbnails`);
   return places.slice(0, params.limit);
-}
-
-export async function enrichPlacesWithImages(
-  places: Place[],
-  _wikiLang: WikiLang,
-): Promise<Place[]> {
-  return places;
-}
-
-export function buildMapsDirectionsUrl(params: {
-  destination: { lat: number; lon: number };
-  travelMode: 'walk' | 'drive';
-}) {
-  const travelmode = params.travelMode === 'walk' ? 'walking' : 'driving';
-  return `https://www.google.com/maps/dir/?api=1&destination=${params.destination.lat},${params.destination.lon}&travelmode=${travelmode}`;
 }

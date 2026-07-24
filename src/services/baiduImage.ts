@@ -73,38 +73,24 @@ export async function searchBaikeImage(keyword: string): Promise<string | undefi
   const cleaned = cleanChineseKeyword(keyword);
   const url = BAIKE_ITEM_URL + encodeURIComponent(cleaned);
 
-  console.log('[BAIKE_IMG] search:', keyword, '-> cleaned:', cleaned);
-
   try {
     const result = await xhrGet(url);
     if (result.status !== 200) {
-      console.log('[BAIKE_IMG] HTTP error:', result.status);
       return undefined;
     }
 
     const html = result.body;
     if (!html || html.length < 1000) {
-      console.log('[BAIKE_IMG] empty page for:', keyword);
       return undefined;
     }
 
     const urls = extractBkimgUrls(html);
     if (urls.length === 0) {
-      console.log('[BAIKE_IMG] no bkimg URLs for:', keyword);
       return undefined;
     }
 
-    const best = urls[0];
-    const resized = resizeBkimgUrl(best, 600);
-
-    console.log('[BAIKE_IMG] found:', keyword, resized.substring(0, 100));
-    return resized;
-  } catch (e) {
-    console.log('[BAIKE_IMG] error:', String(e));
+    return resizeBkimgUrl(urls[0], 600);
+  } catch {
     return undefined;
   }
-}
-
-export async function searchBaiduImage(keyword: string): Promise<string | undefined> {
-  return searchBaikeImage(keyword);
 }
