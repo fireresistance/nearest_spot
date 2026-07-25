@@ -8,6 +8,7 @@ function xhrGet(url: string): Promise<{ status: number; body: string }> {
     xhr.timeout = FETCH_TIMEOUT_MS;
     xhr.open('GET', url, true);
     xhr.setRequestHeader('Accept', 'application/json, text/plain, */*');
+    xhr.setRequestHeader('User-Agent', 'NearestSpot/1.4.0 (Android; https://github.com/nearestspot)');
     xhr.onload = () => resolve({ status: xhr.status, body: xhr.responseText });
     xhr.onerror = () => reject(new Error('XHR error'));
     xhr.ontimeout = () => reject(new Error('XHR timeout'));

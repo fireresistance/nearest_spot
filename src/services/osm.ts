@@ -3,8 +3,8 @@ import { isBoring } from './wikipedia';
 
 const OVERPASS_URLS = [
   'https://overpass-api.de/api/interpreter',
-  'https://overpass.openstreetmap.ru/cgi/interpreter',
   'https://lz4.overpass-api.de/api/interpreter',
+  'https://z.overpass-api.de/api/interpreter',
 ];
 const OVERPASS_TIMEOUT_S = 25;
 
@@ -16,7 +16,7 @@ type OverpassElement = {
   tags?: Record<string, string>;
 };
 
-const FETCH_TIMEOUT_MS = 20000;
+const FETCH_TIMEOUT_MS = 15000;
 
 async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
   const controller = new AbortController();
@@ -154,6 +154,8 @@ async function fetchNearbyPlacesOSMSingle(
   let lastError: string | null = null;
   for (const url of OVERPASS_URLS) {
     try {
+      console.log('[osm] try', url);
+      const t0 = Date.now();
       const res = await fetchWithTimeout(url, {
         method: 'POST',
         headers: {
@@ -162,6 +164,7 @@ async function fetchNearbyPlacesOSMSingle(
         },
         body,
       });
+      console.log('[osm] http', res.status, url, Date.now() - t0, 'ms');
 
       if (!res.ok) {
         lastError = `Overpass ${res.status}`;

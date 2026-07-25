@@ -38,7 +38,7 @@ export function generateCoverPoints(
     }
   }
 
-  const maxPoints = 12;
+  const maxPoints = 5;
   if (points.length > maxPoints) {
     const center = points[0];
     const rest = points.slice(1);

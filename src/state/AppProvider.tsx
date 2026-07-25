@@ -87,7 +87,11 @@ export function AppProvider(props: { children: React.ReactNode; initialLocationO
         readJson<Record<string, Place>>(SAVED_KEY),
         readJson<LocationOverride>(LOCATION_OVERRIDE_KEY),
       ]);
-      if (storedSettings) setSettingsState({ ...DEFAULT_SETTINGS, ...storedSettings });
+      if (storedSettings) {
+        const merged = { ...DEFAULT_SETTINGS, ...storedSettings };
+        merged.radiusMeters = Math.min(100000, Math.max(100, merged.radiusMeters));
+        setSettingsState(merged);
+      }
       if (storedSeen) setSeenPlaceIds(new Set(storedSeen));
       if (storedSaved) setSavedPlaces(storedSaved);
       if (storedLocationOverride) {

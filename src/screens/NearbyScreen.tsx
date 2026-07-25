@@ -130,9 +130,11 @@ export function NearbyScreen({ navigation }: Props) {
           ? detectRegion(coords.lat, coords.lon)
           : settings.regionOverride;
       setCurrentRegion(region);
+      console.log('[feed] loadMore start', coords.lat.toFixed(5), coords.lon.toFixed(5), 'region:', region, 'radius:', settings.radiusMeters);
 
       let addedAny = false;
       let iterations = 0;
+      const reasons: string[] = [];
 
       while (!addedAny && iterations < 3) {
         iterations += 1;
@@ -157,7 +159,8 @@ export function NearbyScreen({ navigation }: Props) {
             googleTokenRef.current = page.nextPageToken;
             places = page.places;
             if (!page.nextPageToken) stageRef.current = 'amap';
-          } catch {
+          } catch (e) {
+            reasons.push(`google: ${String(e)}`);
             stageRef.current = 'amap';
           }
           if (places.length === 0) continue;
@@ -181,7 +184,8 @@ export function NearbyScreen({ navigation }: Props) {
             amapHasMoreRef.current = page.hasMore;
             places = page.places;
             if (!page.hasMore) stageRef.current = 'wiki';
-          } catch {
+          } catch (e) {
+            reasons.push(`amap: ${String(e)}`);
             stageRef.current = 'wiki';
           }
           if (places.length === 0) continue;
@@ -208,6 +212,9 @@ export function NearbyScreen({ navigation }: Props) {
 
           const wiki = wikiPlaces.status === 'fulfilled' ? wikiPlaces.value : [];
           const osm = osmPlaces.status === 'fulfilled' ? osmPlaces.value : [];
+          if (wikiPlaces.status === 'rejected') reasons.push(`wiki: ${String(wikiPlaces.reason)}`);
+          if (osmPlaces.status === 'rejected') reasons.push(`osm: ${String(osmPlaces.reason)}`);
+          console.log('[feed] wiki:', wiki.length, 'osm:', osm.length, 'errors:', reasons.join(' | '));
 
           const seenCoords = new Set<string>();
           const combined: Place[] = [];
@@ -322,6 +329,7 @@ export function NearbyScreen({ navigation }: Props) {
 
       if (!addedAny && stageRef.current === 'done') {
         setExhaustedBoth(true);
+        if (reasons.length > 0) setError(reasons.join('\n'));
       }
     } catch (e) {
       setError(String(e));

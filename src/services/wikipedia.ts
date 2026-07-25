@@ -107,6 +107,7 @@ function xhrGet(url: string, timeout: number = FETCH_TIMEOUT_MS): Promise<{ stat
     xhr.timeout = timeout;
     xhr.open('GET', url, true);
     xhr.setRequestHeader('Accept', 'application/json, text/plain, */*');
+    xhr.setRequestHeader('User-Agent', 'NearestSpot/1.4.0 (Android; https://github.com/nearestspot)');
     xhr.onload = () => {
       resolve({
         status: xhr.status,
@@ -214,10 +215,15 @@ async function fetchNearbyPlacesSingle(
   let lastError: string | null = null;
   for (const lang of langsToTry) {
     for (const hostFn of WIKI_HOSTS) {
+      const host = hostFn(lang);
       try {
-        const places = await fetchFromHost(hostFn(lang), lang, params, apiRadius);
+        console.log('[wiki] try', host);
+        const t0 = Date.now();
+        const places = await fetchFromHost(host, lang, params, apiRadius);
+        console.log('[wiki] ok', host, places.length, Date.now() - t0, 'ms');
         if (places.length > 0) return places;
       } catch (e) {
+        console.log('[wiki] fail', host, String(e));
         lastError = String(e);
       }
     }

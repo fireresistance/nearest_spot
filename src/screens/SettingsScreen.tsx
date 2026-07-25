@@ -177,7 +177,7 @@ export function SettingsScreen() {
             onSubmitEditing={() => {
               const km = parseFloat(customRadius.replace(',', '.'));
               const m = Math.round(km * 1000);
-              if (m >= 100 && m <= 500000) {
+              if (m >= 100 && m <= 100000) {
                 setSettings((s) => ({ ...s, radiusMeters: m }));
               }
             }}
@@ -187,13 +187,13 @@ export function SettingsScreen() {
             onPress={() => {
               const km = parseFloat(customRadius.replace(',', '.'));
               const m = Math.round(km * 1000);
-              if (m >= 100 && m <= 500000) {
+              if (m >= 100 && m <= 100000) {
                 setSettings((s) => ({ ...s, radiusMeters: m }));
               }
             }}
           />
         </View>
-        <Text style={styles.sub}>Wikipedia: макс 10 км. Google/Amap: до 500 км.</Text>
+        <Text style={styles.sub}>Wikipedia: макс 10 км. Google/Amap: до 100 км.</Text>
       </View>
 
       <View style={styles.section}>
