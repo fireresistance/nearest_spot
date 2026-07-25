@@ -107,7 +107,7 @@ function xhrGet(url: string, timeout: number = FETCH_TIMEOUT_MS): Promise<{ stat
     xhr.timeout = timeout;
     xhr.open('GET', url, true);
     xhr.setRequestHeader('Accept', 'application/json, text/plain, */*');
-    xhr.setRequestHeader('User-Agent', 'NearestSpot/1.4.0 (Android; https://github.com/nearestspot)');
+    xhr.setRequestHeader('User-Agent', 'NearestSpot/1.5.0 (Android; https://github.com/nearestspot)');
     xhr.onload = () => {
       resolve({
         status: xhr.status,

@@ -5,6 +5,7 @@ import { PlaceDetailsScreen } from '../screens/PlaceDetailsScreen';
 import { SavedScreen } from '../screens/SavedScreen';
 import { SavedMapScreen } from '../screens/SavedMapScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { t } from '../i18n';
 import type { Place } from '../types/place';
 
 export type NearbyStackParamList = {
@@ -25,12 +26,12 @@ function NearbyStackNavigator() {
       <NearbyStack.Screen
         name="Nearby"
         component={NearbyScreen}
-        options={{ title: 'Рядом' }}
+        options={{ title: t('tab_nearby') }}
       />
       <NearbyStack.Screen
         name="PlaceDetails"
         component={PlaceDetailsScreen}
-        options={{ title: 'Место' }}
+        options={{ title: t('header_place') }}
       />
     </NearbyStack.Navigator>
   );
@@ -43,17 +44,17 @@ function SavedStackNavigator() {
       <SavedStack.Screen
         name="Saved"
         component={SavedScreen}
-        options={{ title: 'Сохранённые' }}
+        options={{ title: t('tab_saved') }}
       />
       <SavedStack.Screen
         name="SavedMap"
         component={SavedMapScreen}
-        options={{ title: 'Карта' }}
+        options={{ title: t('header_map') }}
       />
       <SavedStack.Screen
         name="PlaceDetails"
         component={PlaceDetailsScreen}
-        options={{ title: 'Место' }}
+        options={{ title: t('header_place') }}
       />
     </SavedStack.Navigator>
   );
@@ -73,17 +74,17 @@ export function RootNavigator() {
       <Tab.Screen
         name="NearbyTab"
         component={NearbyStackNavigator}
-        options={{ title: 'Рядом', headerShown: false }}
+        options={{ title: t('tab_nearby'), headerShown: false }}
       />
       <Tab.Screen
         name="SavedTab"
         component={SavedStackNavigator}
-        options={{ title: 'Сохранённые', headerShown: false }}
+        options={{ title: t('tab_saved'), headerShown: false }}
       />
       <Tab.Screen
         name="Settings"
         component={SettingsScreen}
-        options={{ title: 'Настройки', headerShown: true }}
+        options={{ title: t('tab_settings'), headerShown: true }}
       />
     </Tab.Navigator>
   );

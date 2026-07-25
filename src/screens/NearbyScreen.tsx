@@ -16,6 +16,7 @@ import { PlaceCard } from '../ui/PlaceCard';
 import { useTheme, type Theme } from '../ui/theme';
 import type { Place, PlaceCategory } from '../types/place';
 import { MOCK_LOCATIONS } from '../constants/mockLocations';
+import { t, type TranslationKey } from '../i18n';
 
 type Props = NativeStackScreenProps<NearbyStackParamList, 'Nearby'>;
 
@@ -23,14 +24,14 @@ type SourceStage = 'google' | 'amap' | 'wiki' | 'done';
 
 const UNDO_TIMEOUT_MS = 4000;
 
-const CATEGORY_OPTIONS: { value: PlaceCategory | 'all'; label: string }[] = [
-  { value: 'all', label: 'Все' },
-  { value: 'museum', label: 'Музеи' },
-  { value: 'park', label: 'Парки' },
-  { value: 'worship', label: 'Храмы' },
-  { value: 'monument', label: 'Памятники' },
-  { value: 'historic', label: 'История' },
-  { value: 'other', label: 'Другое' },
+const CATEGORY_OPTIONS: { value: PlaceCategory | 'all'; labelKey: TranslationKey }[] = [
+  { value: 'all', labelKey: 'cat_all' },
+  { value: 'museum', labelKey: 'cat_museum' },
+  { value: 'park', labelKey: 'cat_park' },
+  { value: 'worship', labelKey: 'cat_worship' },
+  { value: 'monument', labelKey: 'cat_monument' },
+  { value: 'historic', labelKey: 'cat_historic' },
+  { value: 'other', labelKey: 'cat_other' },
 ];
 
 export function NearbyScreen({ navigation }: Props) {
@@ -446,7 +447,7 @@ export function NearbyScreen({ navigation }: Props) {
     return (
       <View style={styles.actionsRow}>
         <PrimaryButton
-          title="Маршрут"
+          title={t('btn_route')}
           onPress={() => {
             openNavigationPicker(current.lat, current.lon, settings.travelMode, currentRegion);
           }}
@@ -454,14 +455,14 @@ export function NearbyScreen({ navigation }: Props) {
         <View style={styles.actionsRow2}>
           <View style={styles.actionBtn}>
             <PrimaryButton
-              title={saved ? 'Убрать' : 'Сохранить'}
+              title={saved ? t('btn_unsave') : t('btn_save')}
               variant="secondary"
               onPress={() => toggleSaved(current)}
             />
           </View>
           <View style={styles.actionBtn}>
             <PrimaryButton
-              title="Дальше"
+              title={t('btn_next')}
               variant="secondary"
               onPress={() => {
                 dismissCurrent();
@@ -469,7 +470,7 @@ export function NearbyScreen({ navigation }: Props) {
             />
           </View>
           <View style={styles.actionBtn}>
-            <PrimaryButton title="Поделиться" variant="secondary" onPress={shareCurrent} />
+            <PrimaryButton title={t('btn_share')} variant="secondary" onPress={shareCurrent} />
           </View>
         </View>
       </View>
@@ -479,29 +480,29 @@ export function NearbyScreen({ navigation }: Props) {
   if (location.status === 'denied') {
     return (
       <View style={styles.center}>
-        <Text style={styles.title}>Нужна геолокация</Text>
+        <Text style={styles.title}>{t('nearby_need_location_title')}</Text>
         <Text style={styles.body}>
-          Чтобы показывать места рядом, приложению нужен доступ к местоположению "При использовании".
+          {t('nearby_need_location_body')}
         </Text>
         <View style={styles.stack}>
           <PrimaryButton
-            title="Разрешить"
+            title={t('btn_allow')}
             onPress={async () => {
               await refreshLocation();
             }}
           />
           <PrimaryButton
-            title="Открыть настройки"
+            title={t('btn_open_settings')}
             variant="secondary"
             onPress={async () => {
               await openAppSettings();
             }}
           />
           <View style={styles.mockBox}>
-            <Text style={styles.mockTitle}>Или выбери мок-локацию</Text>
+            <Text style={styles.mockTitle}>{t('nearby_mock_title')}</Text>
             <View style={styles.mockRow}>
               <PrimaryButton
-                title="Текущая"
+                title={t('btn_current')}
                 variant={locationOverride.kind === 'none' ? 'primary' : 'secondary'}
                 onPress={async () => {
                   setLocationOverride({ kind: 'none' });
@@ -527,7 +528,7 @@ export function NearbyScreen({ navigation }: Props) {
     return (
       <View style={styles.center}>
         <ActivityIndicator />
-        <Text style={styles.body}>Определяем местоположение…</Text>
+        <Text style={styles.body}>{t('nearby_locating')}</Text>
       </View>
     );
   }
@@ -544,7 +545,7 @@ export function NearbyScreen({ navigation }: Props) {
                 onPress={() => setCategoryFilter(c.value)}
                 style={[styles.chip, active ? styles.chipActive : null]}
               >
-                <Text style={[styles.chipText, active ? styles.chipTextActive : null]}>{c.label}</Text>
+                <Text style={[styles.chipText, active ? styles.chipTextActive : null]}>{t(c.labelKey)}</Text>
               </Pressable>
             );
           })}
@@ -578,17 +579,17 @@ export function NearbyScreen({ navigation }: Props) {
         </Animated.View>
       ) : queue.length > 0 ? (
         <View style={styles.center}>
-          <Text style={styles.title}>Нет мест в этой категории</Text>
-          <Text style={styles.body}>Попробуй другую категорию.</Text>
+          <Text style={styles.title}>{t('nearby_empty_category_title')}</Text>
+          <Text style={styles.body}>{t('nearby_empty_category_body')}</Text>
         </View>
       ) : (
         <View style={styles.center}>
           {loading ? <ActivityIndicator /> : null}
-          <Text style={styles.title}>Нет подходящих мест</Text>
-          <Text style={styles.body}>Попробуй увеличить радиус или выключить "Только с фото".</Text>
+          <Text style={styles.title}>{t('nearby_empty_title')}</Text>
+          <Text style={styles.body}>{t('nearby_empty_body')}</Text>
           <View style={styles.stack}>
             <PrimaryButton
-              title="Обновить"
+              title={t('btn_refresh')}
               onPress={async () => {
                 resetFeed();
                 await refreshLocation();
@@ -602,9 +603,9 @@ export function NearbyScreen({ navigation }: Props) {
       {undoPlace ? (
         <View style={styles.undoBar}>
           <Text style={styles.undoText} numberOfLines={1}>
-            Скрыто: {undoPlace.title}
+            {t('nearby_hidden_prefix')}{undoPlace.title}
           </Text>
-          <PrimaryButton title="Отменить" onPress={undoDismiss} />
+          <PrimaryButton title={t('btn_undo')} onPress={undoDismiss} />
         </View>
       ) : null}
       {error ? (

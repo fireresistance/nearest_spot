@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { useMemo, useState } from 'react';
 import { useApp } from '../state/AppProvider';
 import { PrimaryButton } from '../ui/PrimaryButton';
@@ -7,15 +7,18 @@ import { WIKI_LANG_OPTIONS } from '../services/wikipedia';
 import { detectRegion, getRegionInfo } from '../services/region';
 import type { Region } from '../services/region';
 import { useTheme, type Theme } from '../ui/theme';
+import { t } from '../i18n';
+
+const DONATE_URL = 'https://boosty.to/nearestspot';
 
 const REGION_OPTIONS: { value: Region | 'auto'; label: string }[] = [
-  { value: 'auto', label: 'Авто' },
+  { value: 'auto', label: t('auto') },
   { value: 'china', label: '中国 China' },
   { value: 'russia', label: 'Россия' },
   { value: 'japan', label: '日本 Japan' },
   { value: 'europe', label: 'Europe' },
   { value: 'americas', label: 'Americas' },
-  { value: 'other', label: 'Другой' },
+  { value: 'other', label: t('region_other') },
 ];
 
 export function SettingsScreen() {
@@ -33,15 +36,15 @@ export function SettingsScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.section}>
-        <Text style={styles.h}>Тема</Text>
+        <Text style={styles.h}>{t('settings_theme')}</Text>
         <View style={styles.row}>
           <PrimaryButton
-            title="Светлая"
+            title={t('theme_light')}
             variant={settings.theme === 'light' ? 'primary' : 'secondary'}
             onPress={() => setSettings((s) => ({ ...s, theme: 'light' }))}
           />
           <PrimaryButton
-            title="Тёмная"
+            title={t('theme_dark')}
             variant={settings.theme === 'dark' ? 'primary' : 'secondary'}
             onPress={() => setSettings((s) => ({ ...s, theme: 'dark' }))}
           />
@@ -51,14 +54,14 @@ export function SettingsScreen() {
       {regionInfo && (
         <View style={styles.section}>
           <Text style={styles.h}>
-            Регион: {regionInfo.label} {regionInfo.labelLocal}
+            {t('settings_region')}: {regionInfo.label} {regionInfo.labelLocal}
           </Text>
           <Text style={styles.sub}>
             {settings.regionOverride === 'auto'
-              ? `Определён автоматически по координатам`
-              : `Установлен вручную`}
+              ? t('settings_region_detected')
+              : t('settings_region_manual')}
           </Text>
-          <Text style={styles.sub}>Провайдеры: {regionInfo.primaryProviders.join(', ')}</Text>
+          <Text style={styles.sub}>{t('settings_providers')}: {regionInfo.primaryProviders.join(', ')}</Text>
           {activeRegion === 'china' && (
             <Text style={styles.tip}>{regionInfo.tip}</Text>
           )}
@@ -66,10 +69,10 @@ export function SettingsScreen() {
       )}
 
       <View style={styles.section}>
-        <Text style={styles.h}>Локация</Text>
+        <Text style={styles.h}>{t('settings_location')}</Text>
         <View style={styles.row}>
           <PrimaryButton
-            title="Текущая"
+            title={t('btn_current')}
             variant={locationOverride.kind === 'none' ? 'primary' : 'secondary'}
             onPress={async () => {
               setLocationOverride({ kind: 'none' });
@@ -85,11 +88,11 @@ export function SettingsScreen() {
             />
           ))}
         </View>
-        <Text style={styles.sub}>Если геолокация не даётся (особенно в web), выбери мок.</Text>
+        <Text style={styles.sub}>{t('settings_location_hint')}</Text>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.h}>Регион</Text>
+        <Text style={styles.h}>{t('settings_region')}</Text>
         <View style={styles.row}>
           {REGION_OPTIONS.map((opt) => (
             <PrimaryButton
@@ -100,28 +103,28 @@ export function SettingsScreen() {
             />
           ))}
         </View>
-        <Text style={styles.sub}>Авто — определяет по координатам. В Китае автоматически использует Amap и Baidu.</Text>
+        <Text style={styles.sub}>{t('settings_region_hint')}</Text>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.h}>Amap API ключ</Text>
+        <Text style={styles.h}>{t('settings_amap_key')}</Text>
         <TextInput
           style={styles.input}
           value={settings.amapKey}
           onChangeText={(v) => setSettings((s) => ({ ...s, amapKey: v.trim() }))}
-          placeholder="Вставь ключ с lbs.amap.com"
+          placeholder={t('settings_amap_placeholder')}
           placeholderTextColor="#9CA3AF"
           autoCapitalize="none"
           autoCorrect={false}
           secureTextEntry
         />
         <Text style={styles.sub}>
-          Бесплатный ключ для 高德地图 (Amap). Регистрация на lbs.amap.com → Web Services API. Без ключа Amap не работает.
+          {t('settings_amap_hint')}
         </Text>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.h}>Google Places API ключ</Text>
+        <Text style={styles.h}>{t('settings_google_key')}</Text>
         <TextInput
           style={styles.input}
           value={settings.googleKey}
@@ -133,12 +136,12 @@ export function SettingsScreen() {
           secureTextEntry
         />
         <Text style={styles.sub}>
-          Google Places API — ищет достопримечательности с фото. Бесплатно до 5000 запросов/день. console.cloud.google.com → Places API.
+          {t('settings_google_hint')}
         </Text>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.h}>Радиус</Text>
+        <Text style={styles.h}>{t('settings_radius')}</Text>
         <View style={styles.row}>
           <PrimaryButton
             title="1 км"
@@ -170,7 +173,7 @@ export function SettingsScreen() {
           <TextInput
             style={[styles.input, { flex: 1 }]}
             keyboardType="decimal-pad"
-            placeholder="Свой радиус (км)"
+            placeholder={t('settings_custom_radius_placeholder')}
             placeholderTextColor="#9CA3AF"
             value={customRadius}
             onChangeText={setCustomRadius}
@@ -193,19 +196,19 @@ export function SettingsScreen() {
             }}
           />
         </View>
-        <Text style={styles.sub}>Wikipedia: макс 10 км. Google/Amap: до 100 км.</Text>
+        <Text style={styles.sub}>{t('settings_radius_hint')}</Text>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.h}>Режим</Text>
+        <Text style={styles.h}>{t('settings_mode')}</Text>
         <View style={styles.row}>
           <PrimaryButton
-            title="Пешком"
+            title={t('mode_walk')}
             variant={settings.travelMode === 'walk' ? 'primary' : 'secondary'}
             onPress={() => setSettings((s) => ({ ...s, travelMode: 'walk' }))}
           />
           <PrimaryButton
-            title="На авто"
+            title={t('mode_drive')}
             variant={settings.travelMode === 'drive' ? 'primary' : 'secondary'}
             onPress={() => setSettings((s) => ({ ...s, travelMode: 'drive' }))}
           />
@@ -213,25 +216,25 @@ export function SettingsScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.h}>Язык Wikipedia</Text>
+        <Text style={styles.h}>{t('settings_wiki_lang')}</Text>
         <View style={styles.row}>
           {WIKI_LANG_OPTIONS.map((opt) => (
             <PrimaryButton
               key={opt.value}
-              title={opt.label}
+              title={opt.value === 'auto' ? t('auto') : opt.label}
               variant={settings.wikiLang === opt.value ? 'primary' : 'secondary'}
               onPress={() => setSettings((s) => ({ ...s, wikiLang: opt.value }))}
             />
           ))}
         </View>
-        <Text style={styles.sub}>Авто — определяет по языку устройства. Если нет результатов, пробует другие языки.</Text>
+        <Text style={styles.sub}>{t('settings_wiki_lang_hint')}</Text>
       </View>
 
       <View style={styles.section}>
         <View style={styles.switchRow}>
           <View style={styles.switchText}>
-            <Text style={styles.h}>Только с фото</Text>
-            <Text style={styles.sub}>Убирает выдачу без картинок</Text>
+            <Text style={styles.h}>{t('settings_require_image')}</Text>
+            <Text style={styles.sub}>{t('settings_require_image_hint')}</Text>
           </View>
           <Switch
             value={settings.requireImage}
@@ -241,8 +244,20 @@ export function SettingsScreen() {
       </View>
 
       <View style={styles.section}>
-        <PrimaryButton title="Сбросить просмотренное" variant="secondary" onPress={resetSeen} />
-        <PrimaryButton title="Обновить геолокацию" variant="secondary" onPress={refreshLocation} />
+        <PrimaryButton title={t('settings_reset_seen')} variant="secondary" onPress={resetSeen} />
+        <PrimaryButton title={t('settings_refresh_location')} variant="secondary" onPress={refreshLocation} />
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.h}>{t('settings_donate')}</Text>
+        <Text style={styles.sub}>{t('settings_donate_hint')}</Text>
+        <PrimaryButton
+          title={t('settings_donate_btn')}
+          variant="secondary"
+          onPress={() => {
+            void Linking.openURL(DONATE_URL).catch(() => {});
+          }}
+        />
       </View>
     </ScrollView>
   );

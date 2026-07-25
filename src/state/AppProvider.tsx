@@ -6,6 +6,7 @@ import { readJson, writeJson } from './storage';
 import type { LocationOverride } from './locationOverride';
 import type { WikiLang } from '../services/wikipedia';
 import type { Region } from '../services/region';
+import { t } from '../i18n';
 
 export type TravelMode = 'walk' | 'drive';
 export type ThemeMode = 'light' | 'dark';
@@ -165,7 +166,7 @@ export function AppProvider(props: { children: React.ReactNode; initialLocationO
           if (pos) {
             resolve(pos);
           } else {
-            reject(new Error('Не удалось определить местоположение'));
+            reject(new Error(t('error_location_failed')));
           }
         }, 15000);
         Location.watchPositionAsync(
@@ -193,7 +194,7 @@ export function AppProvider(props: { children: React.ReactNode; initialLocationO
 
   useEffect(() => {
     void refreshLocation().catch((e) => {
-      Alert.alert('Ошибка геолокации', String(e));
+      Alert.alert(t('error_location_title'), String(e));
     });
   }, [refreshLocation]);
 

@@ -8,6 +8,7 @@ import { resolveRegion } from '../services/region';
 import { proxyImageUrl } from '../services/imageProxy';
 import { openNavigationPicker } from '../services/navigation';
 import { useTheme, type Theme } from '../ui/theme';
+import { t } from '../i18n';
 
 type Props = NativeStackScreenProps<SavedStackParamList, 'Saved'>;
 
@@ -45,15 +46,15 @@ export function SavedScreen({ navigation }: Props) {
           items.length > 0 ? (
             <View style={styles.mapBtnWrap}>
               <Pressable style={styles.mapBtn} onPress={() => navigation.navigate('SavedMap')}>
-                <Text style={styles.mapBtnText}>Показать на карте</Text>
+                <Text style={styles.mapBtnText}>{t('btn_show_on_map')}</Text>
               </Pressable>
             </View>
           ) : null
         }
         ListEmptyComponent={
           <View style={styles.emptyInner}>
-            <Text style={styles.title}>Пока пусто</Text>
-            <Text style={styles.body}>Сохраняй места из ленты, чтобы не потерять.</Text>
+            <Text style={styles.title}>{t('saved_empty_title')}</Text>
+            <Text style={styles.body}>{t('saved_empty_body')}</Text>
           </View>
         }
         renderItem={({ item }) => (
@@ -79,7 +80,7 @@ export function SavedScreen({ navigation }: Props) {
               }}
               style={styles.routeBtn}
             >
-              <Text style={styles.routeBtnText}>Маршрут</Text>
+              <Text style={styles.routeBtnText}>{t('btn_route')}</Text>
             </Pressable>
           </Pressable>
         )}

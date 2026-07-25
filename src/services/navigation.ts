@@ -1,6 +1,7 @@
 import { Linking, Alert, Platform } from 'react-native';
 import type { TravelMode } from '../state/AppProvider';
 import type { Region } from './region';
+import { t } from '../i18n';
 
 type NavApp = {
   id: string;
@@ -98,8 +99,8 @@ export function openNavigationPicker(
     },
   }));
 
-  Alert.alert('Построить маршрут', 'Выберите навигатор', [
+  Alert.alert(t('nav_title'), t('nav_message'), [
     ...buttons,
-    { text: 'Отмена', style: 'cancel' },
+    { text: t('cancel'), style: 'cancel' },
   ]);
 }

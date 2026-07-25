@@ -8,6 +8,7 @@ import { resolveRegion } from '../services/region';
 import { proxyImageUrl } from '../services/imageProxy';
 import { openNavigationPicker } from '../services/navigation';
 import { useTheme, type Theme } from '../ui/theme';
+import { t } from '../i18n';
 
 const SOURCE_LABELS: Record<string, string> = {
   wikipedia: 'Wikipedia',
@@ -89,20 +90,20 @@ export function PlaceDetailsScreen({ route }: Props) {
       <View style={styles.section}>
         <View style={styles.buttons}>
           <PrimaryButton
-            title="Маршрут"
+            title={t('btn_route')}
             onPress={() => {
               openNavigationPicker(place.lat, place.lon, settings.travelMode, region);
             }}
           />
           <PrimaryButton
-            title={saved ? 'Убрать из сохранённых' : 'Сохранить'}
+            title={saved ? t('btn_unsave_long') : t('btn_save')}
             variant="secondary"
             onPress={() => toggleSaved(place)}
           />
-          <PrimaryButton title="Поделиться" variant="secondary" onPress={sharePlace} />
+          <PrimaryButton title={t('btn_share')} variant="secondary" onPress={sharePlace} />
           {place.sourceUrl ? (
             <PrimaryButton
-              title="Открыть источник"
+              title={t('btn_open_source')}
               variant="secondary"
               onPress={async () => {
                 await Linking.openURL(place.sourceUrl!);
@@ -113,7 +114,7 @@ export function PlaceDetailsScreen({ route }: Props) {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.meta}>Источник: {sourceLabel(place.source)}</Text>
+        <Text style={styles.meta}>{t('details_source')}: {sourceLabel(place.source)}</Text>
       </View>
     </ScrollView>
   );

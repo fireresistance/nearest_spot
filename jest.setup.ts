@@ -86,3 +86,6 @@ class FakeXMLHttpRequest {
 }
 
 (global as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest = FakeXMLHttpRequest;
+
+import { setUiLocale } from './src/i18n';
+setUiLocale('ru');

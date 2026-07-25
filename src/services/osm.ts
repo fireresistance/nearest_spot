@@ -1,5 +1,6 @@
 import type { Place, PlaceCategory } from '../types/place';
 import { isBoring } from './wikipedia';
+import { t } from '../i18n';
 
 const OVERPASS_URLS = [
   'https://overpass-api.de/api/interpreter',
@@ -202,5 +203,5 @@ async function fetchNearbyPlacesOSMSingle(
     }
   }
 
-  throw new Error(lastError ?? 'Overpass API недоступна');
+  throw new Error(lastError ?? t('error_overpass'));
 }

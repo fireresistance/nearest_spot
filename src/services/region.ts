@@ -1,3 +1,5 @@
+import { t, type TranslationKey } from '../i18n';
+
 export type Region = 'china' | 'russia' | 'japan' | 'europe' | 'americas' | 'other';
 
 export type RegionInfo = {
@@ -8,42 +10,45 @@ export type RegionInfo = {
   tip: string;
 };
 
-const REGIONS: Record<Region, Omit<RegionInfo, 'region'>> = {
+const REGION_TIP_KEYS: Record<Region, TranslationKey> = {
+  china: 'tip_china',
+  russia: 'tip_russia',
+  japan: 'tip_japan',
+  europe: 'tip_europe',
+  americas: 'tip_americas',
+  other: 'tip_other',
+};
+
+const REGIONS: Record<Region, { label: string; labelLocal: string; primaryProviders: string[] }> = {
   china: {
     label: 'China',
     labelLocal: '中国',
     primaryProviders: ['Amap', 'Baidu Baike'],
-    tip: 'В Китае Amap и Baidu работают стабильнее Wikipedia/OSM. Получи бесплатный ключ на lbs.amap.com',
   },
   russia: {
     label: 'Russia',
     labelLocal: 'Россия',
     primaryProviders: ['Wikipedia', 'OSM'],
-    tip: 'Wikipedia и OSM работают в России без ограничений',
   },
   japan: {
     label: 'Japan',
     labelLocal: '日本',
     primaryProviders: ['Wikipedia', 'OSM'],
-    tip: 'Wikipedia и OSM хорошо покрывают Японию',
   },
   europe: {
     label: 'Europe',
     labelLocal: 'Europe',
     primaryProviders: ['Wikipedia', 'OSM'],
-    tip: 'Wikipedia и OSM отлично работают в Европе',
   },
   americas: {
     label: 'Americas',
     labelLocal: 'Americas',
     primaryProviders: ['Wikipedia', 'OSM'],
-    tip: 'Wikipedia и OSM отлично работают в Америке',
   },
   other: {
     label: 'Other',
     labelLocal: '—',
     primaryProviders: ['Wikipedia', 'OSM'],
-    tip: 'Wikipedia и OSM — основные источники данных',
   },
 };
 
@@ -59,7 +64,7 @@ export function detectRegion(lat: number, lon: number): Region {
 }
 
 export function getRegionInfo(region: Region): RegionInfo {
-  return { ...REGIONS[region], region };
+  return { ...REGIONS[region], region, tip: t(REGION_TIP_KEYS[region]) };
 }
 
 export function resolveRegion(

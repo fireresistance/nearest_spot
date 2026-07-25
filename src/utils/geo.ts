@@ -1,3 +1,5 @@
+import { t } from '../i18n';
+
 export function haversineDistanceMeters(a: { lat: number; lon: number }, b: { lat: number; lon: number }) {
   const toRad = (deg: number) => (deg * Math.PI) / 180;
   const R = 6371e3;
@@ -14,10 +16,10 @@ export function haversineDistanceMeters(a: { lat: number; lon: number }, b: { la
 }
 
 export function formatDistance(meters: number) {
-  if (meters < 1000) return `${Math.round(meters)} м`;
+  if (meters < 1000) return `${Math.round(meters)} ${t('unit_m')}`;
   const km = meters / 1000;
-  if (km < 10) return `${km.toFixed(1)} км`;
-  return `${Math.round(km)} км`;
+  if (km < 10) return `${km.toFixed(1)} ${t('unit_km')}`;
+  return `${Math.round(km)} ${t('unit_km')}`;
 }
 
 export function estimateEtaMinutes(meters: number, mode: 'walk' | 'drive') {
@@ -26,10 +28,10 @@ export function estimateEtaMinutes(meters: number, mode: 'walk' | 'drive') {
 }
 
 export function formatEtaMinutes(minutes: number) {
-  if (minutes < 60) return `${minutes} мин`;
+  if (minutes < 60) return `${minutes} ${t('unit_min')}`;
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-  if (m === 0) return `${h} ч`;
-  return `${h} ч ${m} мин`;
+  if (m === 0) return `${h} ${t('unit_h')}`;
+  return `${h} ${t('unit_h')} ${m} ${t('unit_min')}`;
 }
 

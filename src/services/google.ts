@@ -1,4 +1,5 @@
 import type { Place, PlaceCategory } from '../types/place';
+import { t } from '../i18n';
 
 const PLACES_API_URL = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json';
 const PHOTO_API_URL = 'https://maps.googleapis.com/maps/api/place/photo';
@@ -67,7 +68,7 @@ export async function fetchNearbyPlacesGoogle(params: {
   requireImage: boolean;
   pageToken?: string;
 }): Promise<GooglePage> {
-  if (!params.googleKey) throw new Error('Google API ключ не указан');
+  if (!params.googleKey) throw new Error(t('error_google_key'));
 
   const url = new URL(PLACES_API_URL);
   url.searchParams.set('key', params.googleKey);

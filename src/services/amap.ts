@@ -1,4 +1,5 @@
 import type { Place, PlaceCategory } from '../types/place';
+import { t } from '../i18n';
 
 const AMAP_API_URL = 'https://restapi.amap.com/v3/place/around';
 const FETCH_TIMEOUT_MS = 12000;
@@ -89,7 +90,7 @@ export async function fetchNearbyPlacesAmap(params: {
   page?: number;
 }): Promise<AmapPage> {
   if (!params.amapKey) {
-    throw new Error('Amap API ключ не указан');
+    throw new Error(t('error_amap_key'));
   }
 
   const radiusMeters = Math.min(500000, Math.max(100, Math.round(params.radiusMeters)));
