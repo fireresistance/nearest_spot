@@ -1,4 +1,5 @@
 import type { Place } from '../types/place';
+import { haversineDistanceMeters } from '../utils/geo';
 
 type WikiQueryResponse<T> = {
   query?: T;
@@ -275,7 +276,11 @@ async function fetchFromHost(
     const coords = page.coordinates?.[0];
     const lat = coords?.lat ?? 0;
     const lon = coords?.lon ?? 0;
-    const dist = coords?.dist;
+    const dist =
+      coords?.dist ??
+      (lat !== 0 || lon !== 0
+        ? haversineDistanceMeters({ lat: params.lat, lon: params.lon }, { lat, lon })
+        : undefined);
     const rawThumb = page.thumbnail?.source;
     // Skip thumbnails for category pages (Category: in the path is not a real file).
     const thumbnailUrl =

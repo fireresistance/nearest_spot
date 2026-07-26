@@ -1,5 +1,6 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { NearbyScreen } from '../screens/NearbyScreen';
 import { PlaceDetailsScreen } from '../screens/PlaceDetailsScreen';
 import { SavedScreen } from '../screens/SavedScreen';
@@ -74,17 +75,35 @@ export function RootNavigator() {
       <Tab.Screen
         name="NearbyTab"
         component={NearbyStackNavigator}
-        options={{ title: t('tab_nearby'), headerShown: false }}
+        options={{
+          title: t('tab_nearby'),
+          headerShown: false,
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? 'compass' : 'compass-outline'} color={color} size={size} />
+          ),
+        }}
       />
       <Tab.Screen
         name="SavedTab"
         component={SavedStackNavigator}
-        options={{ title: t('tab_saved'), headerShown: false }}
+        options={{
+          title: t('tab_saved'),
+          headerShown: false,
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? 'bookmark' : 'bookmark-outline'} color={color} size={size} />
+          ),
+        }}
       />
       <Tab.Screen
         name="Settings"
         component={SettingsScreen}
-        options={{ title: t('tab_settings'), headerShown: true }}
+        options={{
+          title: t('tab_settings'),
+          headerShown: true,
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? 'settings' : 'settings-outline'} color={color} size={size} />
+          ),
+        }}
       />
     </Tab.Navigator>
   );

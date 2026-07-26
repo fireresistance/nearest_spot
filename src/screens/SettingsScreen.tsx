@@ -243,7 +243,7 @@ export function SettingsScreen() {
         </View>
       </View>
 
-      <View style={styles.section}>
+      <View style={[styles.section, styles.buttonGroup]}>
         <PrimaryButton title={t('settings_reset_seen')} variant="secondary" onPress={resetSeen} />
         <PrimaryButton title={t('settings_refresh_location')} variant="secondary" onPress={refreshLocation} />
       </View>
@@ -277,6 +277,7 @@ const makeStyles = (t: Theme) =>
     sub: { fontSize: 13, color: t.textMuted, marginBottom: 4 },
     tip: { fontSize: 13, color: '#B45309', fontWeight: '500' },
     row: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 8 },
+    buttonGroup: { gap: 10 },
     switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
     switchText: { flex: 1, gap: 4 },
     input: {
