@@ -16,6 +16,7 @@ import { PlaceCard } from '../ui/PlaceCard';
 import { useTheme, type Theme } from '../ui/theme';
 import type { Place, PlaceCategory } from '../types/place';
 import { MOCK_LOCATIONS } from '../constants/mockLocations';
+import { haversineDistanceMeters } from '../utils/geo';
 import { t, type TranslationKey } from '../i18n';
 
 type Props = NativeStackScreenProps<NearbyStackParamList, 'Nearby'>;
@@ -230,6 +231,11 @@ export function NearbyScreen({ navigation }: Props) {
         }
 
         if (places.length > 0) {
+          places = places.map((p) =>
+            p.distanceMeters !== undefined
+              ? p
+              : ({ ...p, distanceMeters: haversineDistanceMeters(coords, { lat: p.lat, lon: p.lon }) } as Place),
+          );
           if (region === 'china') {
             const toEnrich = places.filter((p) => !p.thumbnailUrl).slice(0, 5);
             if (toEnrich.length > 0) {
