@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NearestSpot — Политика конфиденциальности / Privacy Policy</title>
+<style>
+  body { font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; max-width: 760px; margin: 0 auto; padding: 32px 20px; color: #1e293b; line-height: 1.65; background: #fff; }
+  h1 { font-size: 26px; color: #0f172a; }
+  h2 { font-size: 19px; color: #0f172a; margin-top: 32px; }
+  p, li { font-size: 15px; }
+  .updated { color: #64748b; font-size: 14px; }
+  hr { border: none; border-top: 1px solid #e2e8f0; margin: 40px 0; }
+</style>
+</head>
+<body>
+<h1>Политика конфиденциальности NearestSpot</h1>
+<p class="updated">Дата последнего обновления: 29 июля 2026 г.</p>
+
+<h2>1. Общие положения</h2>
+<p>NearestSpot («приложение») показывает интересные места рядом с пользователем. Приложение не имеет собственных серверов, не требует регистрации и не собирает персональные данные.</p>
+
+<h2>2. Геолокация</h2>
+<p>Для поиска мест рядом приложение запрашивает доступ к геопозиции устройства (точной или приблизительной) только во время использования приложения. Координаты используются исключительно для формирования анонимных запросов к публичным открытым API:</p>
+<ul>
+  <li>Wikipedia / Wikimedia (wikipedia.org, wikimedia.org)</li>
+  <li>OpenStreetMap Overpass API (overpass-api.de)</li>
+  <li>Baidu Baike (baike.baidu.com)</li>
+  <li>Openverse (openverse.org)</li>
+</ul>
+<p>Координаты не сохраняются и не передаются никаким другим третьим лицам. Обработка запросов указанными сервисами регулируется их собственными политиками конфиденциальности.</p>
+
+<h2>3. Данные, хранящиеся на устройстве</h2>
+<p>Список сохранённых мест и настройки приложения хранятся только локально на устройстве пользователя и никуда не передаются. Удаление приложения полностью удаляет эти данные.</p>
+
+<h2>4. Навигационные приложения</h2>
+<p>По явному действию пользователя (кнопка «Маршрут») приложение передаёт координаты выбранного места во внешние навигационные приложения (Яндекс Карты, Google Maps, 2ГИС, Amap, Baidu Maps). Дальнейшая обработка данных выполняется этими приложениями по их политикам.</p>
+
+<h2>5. Аналитика и реклама</h2>
+<p>Приложение не содержит аналитических SDK, трекеров и рекламных модулей.</p>
+
+<h2>6. Дети</h2>
+<p>Приложение не направлено на детей и сознательно не собирает данные детей.</p>
+
+<h2>7. Изменения политики</h2>
+<p>Актуальная версия политики всегда доступна на этой странице.</p>
+
+<h2>8. Контакты</h2>
+<p>Вопросы по конфиденциальности: <a href="https://github.com/fireresistance/nearest_spot/issues">github.com/fireresistance/nearest_spot/issues</a></p>
+
+<hr>
+
+<h1>NearestSpot Privacy Policy</h1>
+<p class="updated">Last updated: July 29, 2026</p>
+
+<h2>1. Overview</h2>
+<p>NearestSpot ("the app") shows interesting places near you. The app has no backend servers, requires no account, and collects no personal data.</p>
+
+<h2>2. Location</h2>
+<p>To find nearby places the app requests access to the device's location (precise or approximate) only while the app is in use. Coordinates are used solely to make anonymous requests to public open APIs: Wikipedia/Wikimedia, OpenStreetMap Overpass API, Baidu Baike, and Openverse. Coordinates are never stored or shared with any other third party.</p>
+
+<h2>3. On-device data</h2>
+<p>Saved places and settings are stored locally on your device only and are never transmitted anywhere. Uninstalling the app removes this data completely.</p>
+
+<h2>4. Navigation apps</h2>
+<p>Only upon your explicit action ("Route" button) the app passes destination coordinates to external navigation apps (Yandex Maps, Google Maps, 2GIS, Amap, Baidu Maps), which process data under their own policies.</p>
+
+<h2>5. Analytics and ads</h2>
+<p>The app contains no analytics SDKs, trackers, or advertising modules.</p>
+
+<h2>6. Children</h2>
+<p>The app is not directed at children and does not knowingly collect children's data.</p>
+
+<h2>7. Changes</h2>
+<p>The current version of this policy is always available on this page.</p>
+
+<h2>8. Contact</h2>
+<p>Privacy questions: <a href="https://github.com/fireresistance/nearest_spot/issues">github.com/fireresistance/nearest_spot/issues</a></p>
+</body>
+</html>
