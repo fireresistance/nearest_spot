@@ -25,6 +25,8 @@
 <ul>
   <li>Wikipedia / Wikimedia (wikipedia.org, wikimedia.org)</li>
   <li>OpenStreetMap Overpass API (overpass-api.de)</li>
+  <li>Google Places API (googleapis.com) — если пользователь указал свой ключ</li>
+  <li>Amap Web API (restapi.amap.com) — если пользователь указал свой ключ</li>
   <li>Baidu Baike (baike.baidu.com)</li>
   <li>Openverse (openverse.org)</li>
 </ul>
@@ -34,7 +36,7 @@
 <p>Список сохранённых мест и настройки приложения хранятся только локально на устройстве пользователя и никуда не передаются. Удаление приложения полностью удаляет эти данные.</p>
 
 <h2>4. Навигационные приложения</h2>
-<p>По явному действию пользователя (кнопка «Маршрут») приложение передаёт координаты выбранного места во внешние навигационные приложения (Яндекс Карты, Google Maps, 2ГИС, Amap, Baidu Maps). Дальнейшая обработка данных выполняется этими приложениями по их политикам.</p>
+<p>По явному действию пользователя (кнопка «Маршрут») приложение передаёт координаты выбранного места во внешние навигационные приложения (Яндекс Карты, Google Maps, Amap, Baidu Maps). Дальнейшая обработка данных выполняется этими приложениями по их политикам.</p>
 
 <h2>5. Аналитика и реклама</h2>
 <p>Приложение не содержит аналитических SDK, трекеров и рекламных модулей.</p>
@@ -57,13 +59,13 @@
 <p>NearestSpot ("the app") shows interesting places near you. The app has no backend servers, requires no account, and collects no personal data.</p>
 
 <h2>2. Location</h2>
-<p>To find nearby places the app requests access to the device's location (precise or approximate) only while the app is in use. Coordinates are used solely to make anonymous requests to public open APIs: Wikipedia/Wikimedia, OpenStreetMap Overpass API, Baidu Baike, and Openverse. Coordinates are never stored or shared with any other third party.</p>
+<p>To find nearby places the app requests access to the device's location (precise or approximate) only while the app is in use. Coordinates are used solely to make anonymous requests to public open APIs: Wikipedia/Wikimedia, OpenStreetMap Overpass API, Google Places API and Amap Web API (only if the user provided their own API key), Baidu Baike, and Openverse. Coordinates are never stored or shared with any other third party.</p>
 
 <h2>3. On-device data</h2>
 <p>Saved places and settings are stored locally on your device only and are never transmitted anywhere. Uninstalling the app removes this data completely.</p>
 
 <h2>4. Navigation apps</h2>
-<p>Only upon your explicit action ("Route" button) the app passes destination coordinates to external navigation apps (Yandex Maps, Google Maps, 2GIS, Amap, Baidu Maps), which process data under their own policies.</p>
+<p>Only upon your explicit action ("Route" button) the app passes destination coordinates to external navigation apps (Yandex Maps, Google Maps, Amap, Baidu Maps), which process data under their own policies.</p>
 
 <h2>5. Analytics and ads</h2>
 <p>The app contains no analytics SDKs, trackers, or advertising modules.</p>
