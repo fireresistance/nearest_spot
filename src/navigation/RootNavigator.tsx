@@ -6,6 +6,7 @@ import { PlaceDetailsScreen } from '../screens/PlaceDetailsScreen';
 import { SavedScreen } from '../screens/SavedScreen';
 import { SavedMapScreen } from '../screens/SavedMapScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { NavigationPickerHost } from '../ui/NavigationPicker';
 import { t } from '../i18n';
 import type { Place } from '../types/place';
 
@@ -71,40 +72,43 @@ const Tab = createBottomTabNavigator<RootTabParamList>();
 
 export function RootNavigator() {
   return (
-    <Tab.Navigator>
-      <Tab.Screen
-        name="NearbyTab"
-        component={NearbyStackNavigator}
-        options={{
-          title: t('tab_nearby'),
-          headerShown: false,
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'compass' : 'compass-outline'} color={color} size={size} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="SavedTab"
-        component={SavedStackNavigator}
-        options={{
-          title: t('tab_saved'),
-          headerShown: false,
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'bookmark' : 'bookmark-outline'} color={color} size={size} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Settings"
-        component={SettingsScreen}
-        options={{
-          title: t('tab_settings'),
-          headerShown: true,
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'settings' : 'settings-outline'} color={color} size={size} />
-          ),
-        }}
-      />
-    </Tab.Navigator>
+    <>
+      <Tab.Navigator>
+        <Tab.Screen
+          name="NearbyTab"
+          component={NearbyStackNavigator}
+          options={{
+            title: t('tab_nearby'),
+            headerShown: false,
+            tabBarIcon: ({ color, size, focused }) => (
+              <Ionicons name={focused ? 'compass' : 'compass-outline'} color={color} size={size} />
+            ),
+          }}
+        />
+        <Tab.Screen
+          name="SavedTab"
+          component={SavedStackNavigator}
+          options={{
+            title: t('tab_saved'),
+            headerShown: false,
+            tabBarIcon: ({ color, size, focused }) => (
+              <Ionicons name={focused ? 'bookmark' : 'bookmark-outline'} color={color} size={size} />
+            ),
+          }}
+        />
+        <Tab.Screen
+          name="Settings"
+          component={SettingsScreen}
+          options={{
+            title: t('tab_settings'),
+            headerShown: true,
+            tabBarIcon: ({ color, size, focused }) => (
+              <Ionicons name={focused ? 'settings' : 'settings-outline'} color={color} size={size} />
+            ),
+          }}
+        />
+      </Tab.Navigator>
+      <NavigationPickerHost />
+    </>
   );
 }
