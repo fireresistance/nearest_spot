@@ -29,6 +29,7 @@ function buildHtml(markers: { lat: number; lon: number; title: string }[], isDar
 <div id="map"></div>
 <script>
 var map = L.map('map');
+map.attributionControl.setPrefix(false);
 L.tileLayer('${tileUrl}', { maxZoom: 19, attribution: '${tileAttrib}' }).addTo(map);
 var markers = ${markersJson};
 var bounds = [];
