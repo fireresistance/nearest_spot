@@ -6,7 +6,7 @@ import { readJson, writeJson } from './storage';
 import type { LocationOverride } from './locationOverride';
 import type { WikiLang } from '../services/wikipedia';
 import type { Region } from '../services/region';
-import { t } from '../i18n';
+import { t, setUiLocale, type UILocaleSetting } from '../i18n';
 
 export type TravelMode = 'walk' | 'drive';
 export type ThemeMode = 'light' | 'dark';
@@ -20,6 +20,7 @@ export type Settings = {
   googleKey: string;
   regionOverride: Region | 'auto';
   theme: ThemeMode;
+  uiLocale: UILocaleSetting;
 };
 
 type LocationState =
@@ -57,6 +58,7 @@ const DEFAULT_SETTINGS: Settings = {
   googleKey: '',
   regionOverride: 'auto',
   theme: 'light',
+  uiLocale: 'auto',
 };
 
 const MAX_SEEN_IDS = 5000;
@@ -244,6 +246,8 @@ export function AppProvider(props: { children: React.ReactNode; initialLocationO
   }, []);
 
   const isSaved = useCallback((placeId: string) => Boolean(savedPlaces[placeId]), [savedPlaces]);
+
+  setUiLocale(settings.uiLocale);
 
   const value = useMemo<AppState>(
     () => ({

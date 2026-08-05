@@ -7,7 +7,8 @@ import { SavedScreen } from '../screens/SavedScreen';
 import { SavedMapScreen } from '../screens/SavedMapScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { NavigationPickerHost } from '../ui/NavigationPicker';
-import { t } from '../i18n';
+import { useApp } from '../state/AppProvider';
+import { getUiLocale, t } from '../i18n';
 import type { Place } from '../types/place';
 
 export type NearbyStackParamList = {
@@ -71,9 +72,11 @@ export type RootTabParamList = {
 const Tab = createBottomTabNavigator<RootTabParamList>();
 
 export function RootNavigator() {
+  const { settings } = useApp();
+  const uiLocaleKey = settings.uiLocale === 'auto' ? getUiLocale() : settings.uiLocale;
   return (
     <>
-      <Tab.Navigator>
+      <Tab.Navigator key={uiLocaleKey}>
         <Tab.Screen
           name="NearbyTab"
           component={NearbyStackNavigator}

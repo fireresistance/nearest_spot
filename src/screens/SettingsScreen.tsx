@@ -7,9 +7,16 @@ import { WIKI_LANG_OPTIONS } from '../services/wikipedia';
 import { detectRegion, getRegionInfo } from '../services/region';
 import type { Region } from '../services/region';
 import { useTheme, type Theme } from '../ui/theme';
-import { t } from '../i18n';
+import { t, type UILocaleSetting } from '../i18n';
 
 const DONATE_URL = 'https://boosty.to/nearestspot';
+
+const UI_LOCALE_OPTIONS: { value: UILocaleSetting; label: string }[] = [
+  { value: 'auto', label: '' },
+  { value: 'ru', label: 'Русский' },
+  { value: 'en', label: 'English' },
+  { value: 'zh', label: '中文' },
+];
 
 const REGION_OPTIONS: { value: Region | 'auto'; label: string }[] = [
   { value: 'auto', label: t('auto') },
@@ -49,6 +56,21 @@ export function SettingsScreen() {
             onPress={() => setSettings((s) => ({ ...s, theme: 'dark' }))}
           />
         </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.h}>{t('settings_ui_lang')}</Text>
+        <View style={styles.row}>
+          {UI_LOCALE_OPTIONS.map((opt) => (
+            <PrimaryButton
+              key={opt.value}
+              title={opt.value === 'auto' ? t('auto') : opt.label}
+              variant={settings.uiLocale === opt.value ? 'primary' : 'secondary'}
+              onPress={() => setSettings((s) => ({ ...s, uiLocale: opt.value }))}
+            />
+          ))}
+        </View>
+        <Text style={styles.sub}>{t('settings_ui_lang_hint')}</Text>
       </View>
 
       {regionInfo && (

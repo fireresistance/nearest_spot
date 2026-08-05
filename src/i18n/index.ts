@@ -1,9 +1,19 @@
-export type UILocale = 'ru' | 'en' | 'zh';
+import { NativeModules, Platform } from 'react-native';
 
-function detectLocale(): UILocale {
+export type UILocale = 'ru' | 'en' | 'zh';
+export type UILocaleSetting = UILocale | 'auto';
+
+export function detectDeviceLocale(): UILocale {
   try {
-    const loc = Intl.DateTimeFormat().resolvedOptions().locale ?? '';
-    const primary = loc.split('-')[0].toLowerCase();
+    let raw = '';
+    if (Platform.OS === 'android') {
+      raw = (NativeModules.I18nManager?.localeIdentifier as string | undefined) ?? '';
+    } else if (Platform.OS === 'ios') {
+      const s = NativeModules.SettingsManager?.settings;
+      raw = ((s?.AppleLocale ?? s?.AppleLanguages?.[0]) as string | undefined) ?? '';
+    }
+    if (!raw) raw = Intl.DateTimeFormat().resolvedOptions().locale ?? '';
+    const primary = raw.split(/[-_]/)[0].toLowerCase();
     if (primary === 'ru') return 'ru';
     if (primary === 'zh') return 'zh';
   } catch {
@@ -12,14 +22,14 @@ function detectLocale(): UILocale {
   return 'en';
 }
 
-let current: UILocale = detectLocale();
+let current: UILocale = detectDeviceLocale();
 
 export function getUiLocale(): UILocale {
   return current;
 }
 
-export function setUiLocale(locale: UILocale): void {
-  current = locale;
+export function setUiLocale(locale: UILocaleSetting): void {
+  current = locale === 'auto' ? detectDeviceLocale() : locale;
 }
 
 const ru = {
@@ -94,6 +104,8 @@ const ru = {
   settings_donate: 'Поддержать проект',
   settings_donate_hint: 'Приложение бесплатное и без рекламы. Если оно полезно — можно поддержать разработку.',
   settings_donate_btn: 'Поддержать',
+  settings_ui_lang: 'Язык интерфейса',
+  settings_ui_lang_hint: '«Авто» использует язык системы.',
   auto: 'Авто',
   region_other: 'Другой',
 
@@ -198,6 +210,8 @@ const en: Record<TranslationKey, string> = {
   settings_donate: 'Support the project',
   settings_donate_hint: 'The app is free and ad-free. If you find it useful, you can support development.',
   settings_donate_btn: 'Donate',
+  settings_ui_lang: 'App language',
+  settings_ui_lang_hint: 'Auto follows the system language.',
   auto: 'Auto',
   region_other: 'Other',
 
@@ -299,6 +313,8 @@ const zh: Record<TranslationKey, string> = {
   settings_donate: '支持项目',
   settings_donate_hint: '应用免费且无广告。如果对你有帮助，可以支持开发。',
   settings_donate_btn: '捐赠',
+  settings_ui_lang: '界面语言',
+  settings_ui_lang_hint: '自动跟随系统语言。',
   auto: '自动',
   region_other: '其他',
 
