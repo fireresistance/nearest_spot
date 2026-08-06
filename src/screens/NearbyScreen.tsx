@@ -416,7 +416,8 @@ export function NearbyScreen({ navigation }: Props) {
     const threshold = 120;
     return PanResponder.create({
       onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 8 && Math.abs(g.dy) < 24,
+      onMoveShouldSetPanResponder: (_, g) =>
+        Math.abs(g.dx) > 14 && Math.abs(g.dy) < 30 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
       onPanResponderMove: (_, g) => {
         swipeX.setValue(g.dx);
       },
@@ -573,7 +574,6 @@ export function NearbyScreen({ navigation }: Props) {
               ],
             },
           ]}
-          {...panResponder.panHandlers}
         >
           <PlaceCard
             place={current}
@@ -581,6 +581,7 @@ export function NearbyScreen({ navigation }: Props) {
             region={currentRegion}
             onOpen={() => navigation.navigate('PlaceDetails', { place: current })}
             actions={actions}
+            panHandlers={panResponder.panHandlers}
           />
         </Animated.View>
       ) : queue.length > 0 ? (

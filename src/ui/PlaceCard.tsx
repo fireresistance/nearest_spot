@@ -1,4 +1,4 @@
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View, type GestureResponderHandlers } from 'react-native';
 import { useEffect, useState } from 'react';
 import type { Place } from '../types/place';
 import { estimateEtaMinutes, formatDistance, formatEtaMinutes } from '../utils/geo';
@@ -12,6 +12,7 @@ export function PlaceCard(props: {
   region: Region;
   onOpen: () => void;
   actions: React.ReactNode;
+  panHandlers?: GestureResponderHandlers;
 }) {
   const meters = props.place.distanceMeters;
   const eta = meters !== undefined ? estimateEtaMinutes(meters, props.travelMode) : null;
@@ -40,44 +41,46 @@ export function PlaceCard(props: {
 
   return (
     <View style={styles.card}>
-      <Pressable onPress={props.onOpen} style={styles.media}>
-        {hasImage ? (
-          <Image
-            source={{
-              uri: thumbnailUrl,
-              headers: imageHeaders,
-            }}
-            style={styles.image}
-            onError={() => {
-              setImgError(true);
-            }}
-            onLoad={() => setImgLoaded(true)}
-          />
-        ) : null}
-        {showPlaceholder ? (
-          <View style={styles.imagePlaceholder}>
-            {hasImage && !imgLoaded ? (
-              <ActivityIndicator color="rgba(255,255,255,0.6)" size="large" />
-            ) : (
-              <>
-                <Text style={styles.placeholderIcon}>📍</Text>
-                <Text style={styles.placeholderText} numberOfLines={1}>
-                  {props.place.title}
-                </Text>
-              </>
-            )}
+      <View style={styles.mediaWrap} {...props.panHandlers}>
+        <Pressable onPress={props.onOpen} style={styles.media}>
+          {hasImage ? (
+            <Image
+              source={{
+                uri: thumbnailUrl,
+                headers: imageHeaders,
+              }}
+              style={styles.image}
+              onError={() => {
+                setImgError(true);
+              }}
+              onLoad={() => setImgLoaded(true)}
+            />
+          ) : null}
+          {showPlaceholder ? (
+            <View style={styles.imagePlaceholder}>
+              {hasImage && !imgLoaded ? (
+                <ActivityIndicator color="rgba(255,255,255,0.6)" size="large" />
+              ) : (
+                <>
+                  <Text style={styles.placeholderIcon}>📍</Text>
+                  <Text style={styles.placeholderText} numberOfLines={1}>
+                    {props.place.title}
+                  </Text>
+                </>
+              )}
+            </View>
+          ) : null}
+          <View style={styles.scrim} />
+          <View style={styles.mediaText}>
+            <Text numberOfLines={2} style={styles.title}>
+              {props.place.title}
+            </Text>
+            <Text style={styles.subtitle}>
+              {meters !== undefined ? formatDistance(meters) : '—'} · {eta ? formatEtaMinutes(eta) : '—'}
+            </Text>
           </View>
-        ) : null}
-        <View style={styles.scrim} />
-        <View style={styles.mediaText}>
-          <Text numberOfLines={2} style={styles.title}>
-            {props.place.title}
-          </Text>
-          <Text style={styles.subtitle}>
-            {meters !== undefined ? formatDistance(meters) : '—'} · {eta ? formatEtaMinutes(eta) : '—'}
-          </Text>
-        </View>
-      </Pressable>
+        </Pressable>
+      </View>
       <View style={styles.actions}>{props.actions}</View>
     </View>
   );
@@ -88,6 +91,9 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
     gap: 12,
+  },
+  mediaWrap: {
+    flex: 1,
   },
   media: {
     flex: 1,
