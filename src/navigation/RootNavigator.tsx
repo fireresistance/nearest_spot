@@ -6,6 +6,7 @@ import { PlaceDetailsScreen } from '../screens/PlaceDetailsScreen';
 import { SavedScreen } from '../screens/SavedScreen';
 import { SavedMapScreen } from '../screens/SavedMapScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { LegalScreen } from '../screens/LegalScreen';
 import { NavigationPickerHost } from '../ui/NavigationPicker';
 import { useApp } from '../state/AppProvider';
 import { getUiLocale, t } from '../i18n';
@@ -20,6 +21,11 @@ export type SavedStackParamList = {
   Saved: undefined;
   SavedMap: undefined;
   PlaceDetails: { place: Place };
+};
+
+export type SettingsStackParamList = {
+  Settings: undefined;
+  Legal: { doc: 'privacy' | 'terms' };
 };
 
 const NearbyStack = createNativeStackNavigator<NearbyStackParamList>();
@@ -63,10 +69,28 @@ function SavedStackNavigator() {
   );
 }
 
+const SettingsStack = createNativeStackNavigator<SettingsStackParamList>();
+function SettingsStackNavigator() {
+  return (
+    <SettingsStack.Navigator>
+      <SettingsStack.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{ title: t('tab_settings') }}
+      />
+      <SettingsStack.Screen
+        name="Legal"
+        component={LegalScreen}
+        options={{ title: t('header_legal') }}
+      />
+    </SettingsStack.Navigator>
+  );
+}
+
 export type RootTabParamList = {
   NearbyTab: undefined;
   SavedTab: undefined;
-  Settings: undefined;
+  SettingsTab: undefined;
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -100,11 +124,11 @@ export function RootNavigator() {
           }}
         />
         <Tab.Screen
-          name="Settings"
-          component={SettingsScreen}
+          name="SettingsTab"
+          component={SettingsStackNavigator}
           options={{
             title: t('tab_settings'),
-            headerShown: true,
+            headerShown: false,
             tabBarIcon: ({ color, size, focused }) => (
               <Ionicons name={focused ? 'settings' : 'settings-outline'} color={color} size={size} />
             ),

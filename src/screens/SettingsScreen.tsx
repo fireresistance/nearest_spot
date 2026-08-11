@@ -1,5 +1,6 @@
 import { Linking, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { useMemo, useState } from 'react';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useApp } from '../state/AppProvider';
 import { PrimaryButton } from '../ui/PrimaryButton';
 import { MOCK_LOCATIONS } from '../constants/mockLocations';
@@ -8,6 +9,7 @@ import { detectRegion, getRegionInfo } from '../services/region';
 import type { Region } from '../services/region';
 import { useTheme, type Theme } from '../ui/theme';
 import { t, type UILocaleSetting } from '../i18n';
+import type { SettingsStackParamList } from '../navigation/RootNavigator';
 
 const DONATE_URL = 'https://boosty.to/nearestspot';
 
@@ -28,7 +30,7 @@ const REGION_OPTIONS: { value: Region | 'auto'; label: string }[] = [
   { value: 'other', label: t('region_other') },
 ];
 
-export function SettingsScreen() {
+export function SettingsScreen({ navigation }: NativeStackScreenProps<SettingsStackParamList, 'Settings'>) {
   const { settings, setSettings, resetSeen, refreshLocation, locationOverride, setLocationOverride, location } =
     useApp();
   const [customRadius, setCustomRadius] = useState('');
@@ -268,6 +270,22 @@ export function SettingsScreen() {
       <View style={[styles.section, styles.buttonGroup]}>
         <PrimaryButton title={t('settings_reset_seen')} variant="secondary" onPress={resetSeen} />
         <PrimaryButton title={t('settings_refresh_location')} variant="secondary" onPress={refreshLocation} />
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.h}>{t('settings_legal')}</Text>
+        <View style={styles.row}>
+          <PrimaryButton
+            title={t('settings_legal_privacy')}
+            variant="secondary"
+            onPress={() => navigation.navigate('Legal', { doc: 'privacy' })}
+          />
+          <PrimaryButton
+            title={t('settings_legal_terms')}
+            variant="secondary"
+            onPress={() => navigation.navigate('Legal', { doc: 'terms' })}
+          />
+        </View>
       </View>
 
       <View style={styles.section}>
