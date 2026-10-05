@@ -2,18 +2,19 @@
 
 Мобильное приложение для поиска интересных мест рядом с текущей геолокацией. Tinder-подобный интерфейс: свайпай карточки, сохраняй понравившиеся, строй маршрут.
 
-**Версия:** 1.3.0  
-**Стек:** Expo SDK 54 / React Native 0.81.5 / TypeScript / New Architecture (Fabric + Bridgeless)  
+**Версия:** 1.5.4\
+**Стек:** Expo SDK 54 / React Native 0.81.5 / TypeScript / New Architecture (Fabric + Bridgeless)\
 **Платформы:** Android (iOS — не тестировалась)
 
----
+***
 
 ## Статус проекта
 
 ### Работает
+
 - Геолокация с автообновлением (5 мин stale-таймаут)
-- Поиск мест через Wikipedia API (10 языков) и OpenStreetMap Overpass API (фолбэк)
-- **Мультизапросы для больших радиусов** — Wikipedia/OSM API с лимитом 10 км автоматически разбиваются на сетку подзапросов, покрывающих весь радиус до 500 км
+- Поиск мест через Wikipedia API (до 3 языков × 2 хоста) и OpenStreetMap Overpass API (параллельно, оба источника мержатся)
+- **Мультизапросы для больших радиусов** — у Wikipedia/OSM геопоиск ограничен 10 км, поэтому запрос разбивается на сетку подзапросов; максимум 5 точек (центр + 4 случайные из сетки с шагом 15 км) — до ~20 км реальное покрытие, дальше эвристическая выборка
 - Региональная специфика: Amap (高德地图) и Baidu Baike (百度百科) для Китая
 - Google Places API (если задан ключ) — приоритетный источник с фото
 - Автоопределение региона по координатам (Китай, Россия, Япония, Европа, Америка)
@@ -28,11 +29,12 @@
 - Настройки: радиус (км), режим (пешком/авто), язык Wikipedia, «только с фото», API ключи, регион
 
 ### Известные проблемы
+
 - **Google Maps может быть недоступен** в некоторых регионах
 - **Edge-to-edge отключён** (`edgeToEdgeEnabled: false`) — в Android 16+ потребуется фикс от Expo
 - **Amap/Google требуют API ключи** — без ключей используются Wikipedia/OSM
 
----
+***
 
 ## Архитектура
 
@@ -56,10 +58,9 @@ src/
   services/              # API-клиенты
     wikipedia.ts         # Wikipedia GeoSearch API (generator=geosearch, мультизапросы для radius>10km)
                          # Экспортирует BORING_PATTERNS и isBoring()
-    osm.ts               # OpenStreetMap Overpass API (фолбэк, 3 сервера, мультизапросы для radius>10km)
+    osm.ts               # OpenStreetMap Overpass API (второй источник, 3 зеркала, мультизапросы для radius>10km)
     amap.ts              # 高德地图 Amap POI Search API (для Китая, требует API ключ, до 500км)
     baiduImage.ts        # 百度百科 HTML-парсинг для картинок (bkimg.cdn.bcebos.com)
-    baidu.ts             # 百度百科 Baidu Baike API (обогащение описаний в Китае)
     google.ts            # Google Places API + Photo API (требует API ключ, до 500км)
     region.ts            # Определение региона по координатам
     imageSearch.ts       # Каскад поиска картинок: Baidu Baike → Wikipedia Thumbnail → WM Commons → Openverse
@@ -88,7 +89,7 @@ src/
     geo.ts               # Haversine, форматирование расстояния/ETA
 ```
 
----
+***
 
 ## Логика работы
 
@@ -105,7 +106,7 @@ src/
 
 > `getCurrentPositionAsync` зависает на некоторых Xiaomi/MIUI устройствах. Комбинация `getLastKnownPositionAsync` + `watchPositionAsync` даёт баланс скорости и актуальности.
 
----
+***
 
 ### 2. Поиск мест
 
@@ -119,9 +120,7 @@ Google Places API  (если задан googleKey, до 500км)
 Amap POI Search    (если регион=Китай и задан amapKey, до 500км)
   + Baidu Baike enrichment (фото через HTML-парсинг)
        ↓ нет результатов
-Wikipedia GeoSearch  (до 3 языков × 2 хоста, мультизапросы для radius>10км)
-       ↓ нет результатов
-OSM Overpass API   (3 сервера, 20 сек таймаут, мультизапросы для radius>10км)
+Параллельно (Promise.allSettled): Wikipedia GeoSearch + OSM Overpass, результаты мержатся и скорингуются.
 ```
 
 После загрузки из любого источника — **каскад обогащения картинками**:
@@ -140,13 +139,14 @@ OSM Overpass API   (3 сервера, 20 сек таймаут, мультиза
 
 **Префетч:** когда в очереди < 15 мест, автоматически вызывается `loadMore`.
 
----
+***
 
 ### 3. Фильтрация скучных мест
 
 **Файл:** `src/services/wikipedia.ts` → `isBoring(title)`, `BORING_PATTERNS`
 
 Фильтруются (на русском, английском и китайском):
+
 - Транзит: метро, станции, вокзалы, платформы, трамвайные/автобусные/троллейбусные остановки, маршрутки
 - Парковки и стоянки
 - Заправки (АЗС)
@@ -157,7 +157,7 @@ OSM Overpass API   (3 сервера, 20 сек таймаут, мультиза
 - Школы, детские сады
 - Жилые дома, офисные здания, склады, промышленные объекты
 
----
+***
 
 ### 4. Wikipedia API
 
@@ -176,14 +176,14 @@ Wikipedia API ограничивает радиус геопоиска до 10 �
 
 1. `coverGrid.ts` генерирует сетку точек с шагом 15 км (1.5 × subRadius), покрывающую весь круг
 2. Точки за пределами запрошенного радиуса отсекаются (Haversine)
-3. Максимум 12 точек — если сетка больше, лишние точки выбираются случайно
+3. Максимум 5 точек — центр сетки + 4 случайные точки из остального множества; больше — это уже не покрытие, а выборка области
 4. Запросы выполняются батчами по 3 параллельно (`Promise.allSettled`)
 5. Результаты дедуплицируются по ID места
 6. Ранняя остановка если набрано `limit × 2` мест
 
-Пример: радиус 100 км → ~7 подзапросов по 10 км, радиус 500 км → ~12 подзапросов.
+Пример: радиус 100 км → полная сетка с шагом 15 км дала бы ~140+ центров, но берётся только 5 точек — это осознанная эвристика, а не полное покрытие.
 
----
+***
 
 ### 5. Каскад поиска картинок
 
@@ -196,15 +196,12 @@ Wikipedia API ограничивает радиус геопоиска до 10 �
    - Извлекает изображения с `bkimg.cdn.bcebos.com` (CDN Baidu)
    - Устанавливает `Referer: https://baike.baidu.com` для доступа к CDN
    - Используется только для китайских названий
-
 2. **Wikipedia Thumbnail** — `xx.wikipedia.org/w/api.php`
    - Получает thumbnail из `pageimages` prop при поиске мест
    - Работает для ru/en и других языков
-
 3. **Wikimedia Commons** — `commons.wikimedia.org/w/api.php`
    - Ищет изображения по названию места
    - Возвращает `thumburl` (600px превью)
-
 4. **Openverse** — `api.openverse.org/v1/images/`
    - Поиск Creative Commons изображений
    - Бесплатный, без API ключа (rate-limited)
@@ -213,17 +210,19 @@ Wikipedia API ограничивает радиус геопоиска до 10 �
 Функция `enrichPlacesWithImages()` параллельно обогащает места без картинок через каскад.
 
 **Проксирование для Китая** (`src/services/imageProxy.ts`):
+
 - Wikimedia Commons заблокирован в Китае
 - URL перенаправляются через `zh.wikipedia.org` (доступен)
 - Baidu Baike CDN требует правильный `Referer` заголовок
 
----
+***
 
 ### 6. Карточка места
 
 **Файл:** `src/ui/PlaceCard.tsx`
 
 Состояния фотографии:
+
 1. **Загрузка** (`thumbnailUrl` есть, `imgLoaded = false`) → `ActivityIndicator`
 2. **Загружена** (`imgLoaded = true`) → фото
 3. **Ошибка** (`imgError = true`) → плейсхолдер с 📍
@@ -231,7 +230,7 @@ Wikipedia API ограничивает радиус геопоиска до 10 �
 
 При загрузке Image передаются заголовки `Referer` и `User-Agent` — без них Wikipedia/WMF может вернуть 403 на загрузку изображения.
 
----
+***
 
 ### 7. Навигация
 
@@ -239,32 +238,33 @@ Wikipedia API ограничивает радиус геопоиска до 10 �
 
 При нажатии «Построить маршрут» появляется Alert с выбором навигатора:
 
-| Навигатор | URL-шаблон | Примечание |
-|-----------|-----------|------------|
-| Google Maps | `google.navigation:q={lat},{lon}&mode={mode}` | По умолчанию для всех регионов |
-| Яндекс Карты | `yandexnavi://build_route_on_map?lat_to={lat}&lon_to={lon}` | Первый в России |
-| Amap (高德) | `androidamap://route?lat={lat}&lon={lon}&dev=0` | Первый в Китае |
-| Baidu Maps | `baidumap://map/direction?destination={lat},{lon}` | Второй в Китае |
+| Навигатор    | URL-шаблон                                                  | Примечание                     |
+| ------------ | ----------------------------------------------------------- | ------------------------------ |
+| Google Maps  | `google.navigation:q={lat},{lon}&mode={mode}`               | По умолчанию для всех регионов |
+| Яндекс Карты | `yandexnavi://build_route_on_map?lat_to={lat}&lon_to={lon}` | Первый в России                |
+| Amap (高德)    | `androidamap://route?lat={lat}&lon={lon}&dev=0`             | Первый в Китае                 |
+| Baidu Maps   | `baidumap://map/direction?destination={lat},{lon}`          | Второй в Китае                 |
 
 Порядок кнопок зависит от региона:
+
 - **Китай:** Amap → Baidu → Google → Yandex
 - **Россия:** Yandex → Google → Amap → Baidu
 - **Другие:** Google → Yandex → Amap → Baidu
 
----
+***
 
 ### 8. Хранение данных
 
 **Файл:** `src/state/storage.ts` — `AsyncStorage` с версионированными ключами:
 
-| Ключ | Тип | Содержимое |
-|------|-----|------------|
-| `settings.v2` | `Settings` | radius, travelMode, requireImage, wikiLang, amapKey, googleKey, regionOverride |
-| `seen.v1` | `string[]` | ID просмотренных мест |
-| `saved.v1` | `Record<string, Place>` | Сохранённые места (полные объекты) |
-| `locationOverride.v1` | `LocationOverride` | Мок-локация |
+| Ключ                  | Тип                     | Содержимое                                                                     |
+| --------------------- | ----------------------- | ------------------------------------------------------------------------------ |
+| `settings.v2`         | `Settings`              | radius, travelMode, requireImage, wikiLang, amapKey, googleKey, regionOverride |
+| `seen.v1`             | `string[]`              | ID просмотренных мест                                                          |
+| `saved.v1`            | `Record<string, Place>` | Сохранённые места (полные объекты)                                             |
+| `locationOverride.v1` | `LocationOverride`      | Мок-локация                                                                    |
 
----
+***
 
 ### 9. Управление состоянием загрузки в NearbyScreen
 
@@ -294,7 +294,7 @@ onPress={async () => {
 
 `loadMoreRef` хранит актуальную версию `loadMore` (обновляется через `useEffect`), чтобы не поймать устаревшее замыкание.
 
----
+***
 
 ## Разработка
 
@@ -305,7 +305,7 @@ onPress={async () => {
 - Java 17
 - ADB — для установки APK и отладки
 
-**Путь к Android SDK на этой машине:** `C:\Android\sdk`  
+**Путь к Android SDK на этой машине:** `C:\Android\sdk`\
 **Путь к ADB:** `C:\Android\sdk\platform-tools\adb.exe`
 
 ### Установка зависимостей
@@ -323,20 +323,20 @@ INTEGRATION=1 npx jest      # + интеграционные (реальные A
 
 > Тесты в `__tests__/wikipedia.test.ts` мокают `global.fetch`, но сервис использует XHR — тесты устарели и не покрывают реальный код-путь.
 
----
+***
 
 ## Сборка и деплой
 
 ### Два режима работы приложения
 
-| Режим | Как собрать | Требует Metro | Когда использовать |
-|-------|-------------|---------------|-------------------|
-| **Release APK** | `gradlew assembleRelease` | Нет — бандл вшит в APK | Деплой пользователю |
-| **Debug (dev)** | `npx expo run:android` | Да — порт 8081 | Разработка и отладка |
+| Режим           | Как собрать               | Требует Metro          | Когда использовать   |
+| --------------- | ------------------------- | ---------------------- | -------------------- |
+| **Release APK** | `gradlew assembleRelease` | Нет — бандл вшит в APK | Деплой пользователю  |
+| **Debug (dev)** | `npx expo run:android`    | Да — порт 8081         | Разработка и отладка |
 
 > **Release APK** — правильный вариант для постоянного использования. Debug-билд требует, чтобы на компьютере был запущен Metro-бандлер, иначе приложение покажет красный экран «Unable to load script».
 
----
+***
 
 ### Где взять ADB
 
@@ -346,14 +346,16 @@ ADB — часть Android SDK Platform Tools. Путь на этой машин
 C:\Android\sdk\platform-tools\adb.exe
 ```
 
-Если нет — скачать отдельно: https://developer.android.com/tools/releases/platform-tools
+Если нет — скачать отдельно: <https://developer.android.com/tools/releases/platform-tools>
 
 Проверить подключение:
+
 ```powershell
 & "C:\Android\sdk\platform-tools\adb.exe" devices
 ```
 
 Должно показать:
+
 ```
 List of devices attached
 XXXXXXXX    device
@@ -368,7 +370,7 @@ XXXXXXXX    device
 3. Подключить телефон по USB
 4. Подтвердить «Разрешить отладку» на телефоне
 
----
+***
 
 ### Сборка release APK (рекомендуется)
 
@@ -383,6 +385,7 @@ cd Z:\projects\NearestSpot\android
 Gradle сам запустит `npx expo export:embed` для бандлинга JS. Занимает 5–10 минут при первой сборке, потом быстрее.
 
 APK появится здесь:
+
 ```
 android\app\build\outputs\apk\release\app-release.apk
 ```
@@ -406,7 +409,7 @@ android\app\build\outputs\apk\release\app-release.apk
 & "C:\Android\sdk\platform-tools\adb.exe" shell am start -n com.nearestspot.app/.MainActivity
 ```
 
----
+***
 
 ## Отладка
 
@@ -465,60 +468,67 @@ Alert.alert('DEBUG', JSON.stringify(someValue, null, 2));
 
 Появится всплывающее окно прямо на экране телефона — работает и в release APK.
 
----
+***
 
 ### Типичные ошибки и их причины
 
 #### Красный экран «Unable to load script»
-**Причина:** Приложение собрано в debug-режиме, а Metro не запущен.  
+
+**Причина:** Приложение собрано в debug-режиме, а Metro не запущен.\
 **Решение:** Запустить Metro (`npx expo start`) + `adb reverse tcp:8081 tcp:8081`, либо пересобрать release APK.
 
 #### Красный экран «Cannot find native module 'ExponentImagePicker'»
-**Причина:** Устаревший кэш Metro-бандлера содержит мусор от предыдущих сессий.  
+
+**Причина:** Устаревший кэш Metro-бандлера содержит мусор от предыдущих сессий.\
 **Решение:** Сбросить кэш Metro:
+
 ```powershell
 npx expo start --clear
 ```
+
 Или пересобрать release APK — там кэша нет.
 
 #### `adb: command not found` / путь к ADB
-**Причина:** ADB не в PATH.  
+
+**Причина:** ADB не в PATH.\
 **Решение:** Использовать полный путь `C:\Android\sdk\platform-tools\adb.exe` или добавить в PATH.
 
 #### Краш Gradle при сборке на Node.js v24
-**Причина:** Несовместимость Gradle с Node.js v24.  
+
+**Причина:** Несовместимость Gradle с Node.js v24.\
 **Решение:** Использовать Node.js v20.x.
 
 #### Приложение не загружает места (показывает «Нет подходящих мест»)
-**Причина:** Все ближайшие места уже были показаны ранее (они в `seenPlaceIds`).  
+
+**Причина:** Все ближайшие места уже были показаны ранее (они в `seenPlaceIds`).\
 **Решение:** Нажать «Сбросить просмотренное» в Настройках. Или увеличить радиус.
 
----
+***
 
 ## Ключевые решения
 
-| Решение | Почему |
-|---------|--------|
-| `XMLHttpRequest` вместо `fetch` | `fetch()` в React Native использует OkHttp — Wikipedia блокирует его 403. XHR работает через другой сетевой стек и не блокируется |
-| `generator=geosearch` (один запрос) | Два запроса (geosearch + details) — второй часто получал 403. Один запрос получает и места, и картинки |
-| `getLastKnownPositionAsync` + stale-проверка | `getCurrentPositionAsync` зависает на Xiaomi/MIUI |
-| `watchPositionAsync` как фолбэк | Работает даже когда `getCurrentPositionAsync` зависает |
-| Региональная система (region.ts) | В Китае Wikipedia/OSM могут быть недоступны; Amap/Baidu работают стабильно |
-| `isBoring()` в wikipedia.ts + экспорт в osm.ts | Единый фильтр «скучных» объектов для всех источников |
-| Размер превью Wikipedia 500px | 900px — избыточно для карточки, медленно грузится |
-| `imgLoaded` state в PlaceCard | Без него — чёрный экран пока идёт загрузка; теперь показывается спиннер |
-| `Referer` + `User-Agent` в Image headers | Без них Wikipedia/WMF может вернуть 403 на загрузку изображения |
-| Фолбэк-поиск картинок (imageSearch.ts) | Многие статьи Wikipedia без thumbnail; Wikimedia Commons и Openverse дают картинки без API ключа |
-| 3 Overpass-сервера с перебором | Основной может вернуть 406 или быть перегружен |
-| `requireImage: false` по умолчанию | Большинство OSM-мест без фото; `true` фильтровало почти всё |
-| `edgeToEdgeEnabled: false` | Баг в Expo SDK 54 / RN 0.81 — краш при запуске на Android 14+ |
-| `exhaustedRef` + `loadingRef` как `useRef` | Синхронные проверки без ре-рендера; `useState` давал race condition при быстрых свайпах |
-| `loadMoreRef` для хранения колбэка | Позволяет вызвать актуальное замыкание `loadMore` из обработчика кнопки без устаревших значений |
-| `queueIdsRef` для дедупликации | Множество ID позволяет за O(1) проверить, было ли место уже в очереди |
-| Release APK через `assembleRelease` | Debug-билд требует Metro; release вшивает бандл и работает автономно |
-| `bundleCommand = "export:embed"` в Gradle | Использует Expo CLI вместо стандартного RN bundler — корректно разрешает Expo конфиг |
+| Решение                                        | Почему                                                                                                                            |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `XMLHttpRequest` + явный `User-Agent`          | Wikimedia отдаёт 403 запросам без внятного User-Agent (политика для ботов). В RN `fetch` — polyfill поверх XHR, но заголовки менять умеет только прямой XHR — поэтому он и используется                                                              |
+| `generator=geosearch` (один запрос)            | Два запроса (geosearch + details) — второй часто получал 403. Один запрос получает и места, и картинки                            |
+| `getLastKnownPositionAsync` + stale-проверка   | `getCurrentPositionAsync` зависает на Xiaomi/MIUI                                                                                 |
+| `watchPositionAsync` как фолбэк                | Работает даже когда `getCurrentPositionAsync` зависает                                                                            |
+| Региональная система (region.ts)               | В Китае Wikipedia/OSM могут быть недоступны; Amap/Baidu работают стабильно                                                        |
+| `isBoring()` в wikipedia.ts + экспорт в osm.ts | Единый фильтр «скучных» объектов для всех источников                                                                              |
+| Размер превью Wikipedia 500px                  | 900px — избыточно для карточки, медленно грузится                                                                                 |
+| `imgLoaded` state в PlaceCard                  | Без него — чёрный экран пока идёт загрузка; теперь показывается спиннер                                                           |
+| `Referer` + `User-Agent` в Image headers       | Без них Wikipedia/WMF может вернуть 403 на загрузку изображения                                                                   |
+| Фолбэк-поиск картинок (imageSearch.ts)         | Многие статьи Wikipedia без thumbnail; Wikimedia Commons и Openverse дают картинки без API ключа                                  |
+| 3 Overpass-сервера с перебором                 | Основной может вернуть 406 или быть перегружен                                                                                    |
+| `requireImage: false` по умолчанию             | Большинство OSM-мест без фото; `true` фильтровало почти всё                                                                       |
+| `edgeToEdgeEnabled: false`                     | Баг в Expo SDK 54 / RN 0.81 — краш при запуске на Android 14+                                                                     |
+| `exhaustedRef` + `loadingRef` как `useRef`     | Синхронные проверки без ре-рендера; `useState` давал race condition при быстрых свайпах                                           |
+| `loadMoreRef` для хранения колбэка             | Позволяет вызвать актуальное замыкание `loadMore` из обработчика кнопки без устаревших значений                                   |
+| `queueIdsRef` для дедупликации                 | Множество ID позволяет за O(1) проверить, было ли место уже в очереди                                                             |
+| Release APK через `assembleRelease`            | Debug-билд требует Metro; release вшивает бандл и работает автономно                                                              |
+| `bundleCommand = "export:embed"` в Gradle      | Использует Expo CLI вместо стандартного RN bundler — корректно разрешает Expo конфиг                                              |
 
----
+***
 
 ## Как получить API ключи
 
@@ -540,7 +550,7 @@ npx expo start --clear
 
 Работают из коробки, без регистрации. Rate-limited, но для личного использования более чем достаточно.
 
----
+***
 
 ## Что доработать
 
@@ -553,3 +563,4 @@ npx expo start --clear
 7. **EAS Build:** Настроить облачную сборку вместо локальной
 8. **Тесты:** Переписать wikipedia.test.ts под XHR, покрыть регион, Amap, Google, imageSearch
 9. **Убрать debug info:** После стабилизации убрать отладочный текст из PlaceCard
+
