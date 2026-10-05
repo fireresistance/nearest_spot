@@ -47,3 +47,10 @@ logcat*.txt
 
 # AI config
 .claude/
+.trae/
+
+# internal publishing notes — never public
+RUSTORE_PUBLISH.md
+PUBLISHING_APPGALLERY.md
+keystore.properties
+posts/
